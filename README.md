@@ -26,7 +26,7 @@ Im Programm erklärt der Menüpunkt `8) Hilfe` alle Funktionen.
 
 ## Wo liegen die Daten?
 
-Im Ordner `Stundenbuch` auf dem Desktop, z. B. `C:\Users\Name\Desktop\Stundenbuch`
+Im Ordner `Stundenbuch-Daten` auf dem Desktop, z. B. `C:\Users\Name\Desktop\Stundenbuch-Daten`
 (bei aktiver OneDrive-Sicherung im Desktop-Ordner von OneDrive).
 Dort liegen drei CSV-Dateien (Trennzeichen `;`, UTF-8):
 
@@ -51,12 +51,14 @@ Die `.exe` allein funktioniert nicht, sie braucht den Ordner `runtime` daneben. 
 
 **Für den Empfänger:** ZIP entpacken (Rechtsklick, „Alle extrahieren“) und `Stundenbuch.exe` doppelklicken.
 Weil die App nicht signiert ist, warnt Windows beim ersten Start („Der Computer wurde durch Windows geschützt“):
-„Weitere Informationen“ und dann „Trotzdem ausführen“ klicken. Die Daten landen bei ihm in `Desktop\Stundenbuch`.
+„Weitere Informationen“ und dann „Trotzdem ausführen“ klicken. Die Daten landen bei ihm in `Desktop\Stundenbuch-Daten`, egal wo er die ZIP entpackt.
+Der Datenordner heißt bewusst anders als der App-Ordner `Stundenbuch`, damit man beim Löschen
+oder Ersetzen der App nie versehentlich die Daten mitlöscht.
 
 ## Testen (Probelauf)
 
 Getestet wird mit vorbereiteten Eingaben aus `testeingaben/` und einem eigenen Testordner, damit die echten Daten unberührt bleiben.
-Die Daten landen dann in `testdaten\Desktop\Stundenbuch`.
+Die Daten landen dann in `testdaten\Desktop\Stundenbuch-Daten`.
 In PowerShell muss `-Duser.home=...` in Anführungszeichen stehen:
 
 ```

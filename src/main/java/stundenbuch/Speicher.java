@@ -24,9 +24,12 @@ public class Speicher {
 
     private final Path ordner;
 
-    /** Speichert im Ordner "Stundenbuch" auf dem Desktop. */
+    /**
+     * Speichert im Ordner "Stundenbuch-Daten" auf dem Desktop. Bewusst nicht "Stundenbuch",
+     * weil der App-Ordner aus der ZIP so heißt: Daten und App sollen nie im selben Ordner landen.
+     */
     public Speicher() {
-        this.ordner = findeDesktop().resolve("Stundenbuch").toAbsolutePath();
+        this.ordner = findeDesktop().resolve("Stundenbuch-Daten").toAbsolutePath();
     }
 
     /**
