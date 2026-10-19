@@ -4,6 +4,7 @@ import java.io.Console;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
@@ -27,6 +28,8 @@ public class Menue {
     // Anzeige: 05.10.2026 und mit Wochentag "Mo., 05.10.2026"
     private static final DateTimeFormatter DATUM_ANZEIGE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
     private static final DateTimeFormatter TAG_ANZEIGE = DateTimeFormatter.ofPattern("EE, dd.MM.yyyy", DEUTSCH);
+    // Monat für die Auswertung, z. B. "Oktober 2026"
+    private static final DateTimeFormatter MONAT_ANZEIGE = DateTimeFormatter.ofPattern("MMMM yyyy", DEUTSCH);
 
     private final Scanner scanner;
     private final Speicher speicher;
@@ -217,8 +220,71 @@ public class Menue {
         System.out.println("Eintrag #" + e.getId() + " gelöscht.");
     }
 
+    /** Tabelle: Zeilen = Projekte, Spalten = Mitarbeiter, mit Gesamt und Summe. */
     private void auswertungAnzeigen() {
-        System.out.println("Kommt in Schritt 9.");
+        List<Projekt> projekte = zeiterfassung.getProjekte();
+        List<Mitarbeiter> mitarbeiter = zeiterfassung.getMitarbeiter();
+        if (projekte.isEmpty() || mitarbeiter.isEmpty()) {
+            System.out.println("Lege zuerst mindestens einen Mitarbeiter (6) und ein Projekt (7) an.");
+            return;
+        }
+
+        // 1) Zeitraum wählen: nur Monate mit Einträgen, neueste zuerst
+        List<YearMonth> monate = zeiterfassung.getMonateMitEintraegen();
+        System.out.println("Zeitraum wählen:");
+        System.out.println("  0) Gesamter Zeitraum");
+        for (int i = 0; i < monate.size(); i++) {
+            System.out.println("  " + (i + 1) + ") " + monate.get(i).format(MONAT_ANZEIGE));
+        }
+        int nr;
+        while (true) {
+            nr = leseZahl("Nummer: ");
+            if (nr >= 0 && nr <= monate.size()) {
+                break;
+            }
+            System.out.println("Bitte eine Zahl von 0 bis " + monate.size() + " eingeben.");
+        }
+        YearMonth monat = nr == 0 ? null : monate.get(nr - 1); // null = alle Monate
+
+        // 2) Spaltenbreiten: erste Spalte nach dem längsten Projektnamen,
+        //    Zahlenspalten alle gleich breit nach dem längsten Namen bzw. der längsten Zahl
+        int breiteProjekt = "Projekt".length();
+        for (Projekt p : projekte) {
+            breiteProjekt = Math.max(breiteProjekt, p.getName().length());
+        }
+        int breiteZahl = Math.max("Gesamt".length(), formatStunden(zeiterfassung.getStundenGesamt(monat)).length());
+        for (Mitarbeiter m : mitarbeiter) {
+            breiteZahl = Math.max(breiteZahl, m.getName().length());
+        }
+        String formatProjekt = "%-" + breiteProjekt + "s";
+        String formatZahl = "  %" + breiteZahl + "s";
+        int gesamtBreite = breiteProjekt + (mitarbeiter.size() + 1) * (breiteZahl + 2);
+
+        // 3) Tabelle ausgeben
+        System.out.println();
+        System.out.println("Auswertung: " + (monat == null ? "Gesamter Zeitraum" : monat.format(MONAT_ANZEIGE)));
+
+        System.out.printf(formatProjekt, "Projekt");
+        for (Mitarbeiter m : mitarbeiter) {
+            System.out.printf(formatZahl, m.getName());
+        }
+        System.out.printf(formatZahl + "%n", "Gesamt");
+        System.out.println("-".repeat(gesamtBreite));
+
+        for (Projekt p : projekte) {
+            System.out.printf(formatProjekt, p.getName());
+            for (Mitarbeiter m : mitarbeiter) {
+                System.out.printf(formatZahl, formatStunden(zeiterfassung.getStunden(p, m, monat)));
+            }
+            System.out.printf(formatZahl + "%n", formatStunden(zeiterfassung.getStundenGesamt(p, monat)));
+        }
+
+        System.out.println("=".repeat(gesamtBreite));
+        System.out.printf(formatProjekt, "Summe");
+        for (Mitarbeiter m : mitarbeiter) {
+            System.out.printf(formatZahl, formatStunden(zeiterfassung.getStundenGesamt(m, monat)));
+        }
+        System.out.printf(formatZahl + "%n", formatStunden(zeiterfassung.getStundenGesamt(monat)));
     }
 
     private void mitarbeiterVerwalten() {
