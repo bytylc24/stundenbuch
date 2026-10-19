@@ -26,15 +26,18 @@ Im Programm erklärt der Menüpunkt `8) Hilfe` alle Funktionen.
 
 ## Wo liegen die Daten?
 
-Im Ordner `Stundenbuch` im Benutzerordner, unter Windows z. B. `C:\Users\Name\Stundenbuch`.
+Im Ordner `Stundenbuch` auf dem Desktop, z. B. `C:\Users\Name\Desktop\Stundenbuch`
+(bei aktiver OneDrive-Sicherung im Desktop-Ordner von OneDrive).
 Dort liegen drei CSV-Dateien (Trennzeichen `;`, UTF-8):
 
-| Datei | Inhalt |
-|---|---|
-| `mitarbeiter.csv` | id;name |
-| `projekte.csv` | id;ort;kunde |
-| `eintraege.csv` | id;datum;mitarbeiterId;projektId;stunden;beschreibung |
+| Datei | Inhalt | Beispiel |
+|---|---|---|
+| `mitarbeiter.csv` | Kennung;Name | `AB_01;Jonas` |
+| `projekte.csv` | Nr;Ort;Kunde | `1;Graz;Mustermann` |
+| `eintraege.csv` | Nr;Datum;Mitarbeiter;ProjektNr;Stunden;Beschreibung | `1;2026-10-05;AB_01;1;10.0;Konzept erstellt` |
 
+`eintraege.csv` beginnt mit einer Kopfzeile, die die Spalten erklärt.
+Jeder Mitarbeiter hat eine feste Kennung: `AB_01` = Arbeiter 1, `AB_02` = Arbeiter 2 usw.
 Jede Änderung wird sofort gespeichert.
 
 ## .exe erstellen
@@ -45,6 +48,7 @@ Weitergeben muss man den ganzen Ordner `dist\Stundenbuch`, z. B. als ZIP.
 ## Testen (Probelauf)
 
 Getestet wird mit vorbereiteten Eingaben aus `testeingaben/` und einem eigenen Testordner, damit die echten Daten unberührt bleiben.
+Die Daten landen dann in `testdaten\Desktop\Stundenbuch`.
 In PowerShell muss `-Duser.home=...` in Anführungszeichen stehen:
 
 ```

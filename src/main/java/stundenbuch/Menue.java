@@ -299,7 +299,7 @@ public class Menue {
             }
             int breite = liste.stream().mapToInt(m -> m.getName().length()).max().orElse(0);
             for (Mitarbeiter m : liste) {
-                System.out.printf("  %-" + breite + "s  %8s%n",
+                System.out.printf("  %s  %-" + breite + "s  %8s%n", m.getKennung(),
                         m.getName(), formatStunden(zeiterfassung.getStundenGesamt(m, null)));
             }
             System.out.println("1) Hinzufügen   2) Umbenennen   3) Löschen   0) Zurück");
@@ -318,12 +318,13 @@ public class Menue {
 
     private void mitarbeiterHinzufuegen() {
         String name = leseText("Name: ");
-        if (zeiterfassung.addMitarbeiter(name) == null) {
+        Mitarbeiter m = zeiterfassung.addMitarbeiter(name);
+        if (m == null) {
             System.out.println("Den Namen " + name + " gibt es schon.");
             return;
         }
         speichern();
-        System.out.println("Angelegt: " + name);
+        System.out.println("Angelegt: " + name + " (" + m.getKennung() + ")");
     }
 
     private void mitarbeiterUmbenennen() {
@@ -464,7 +465,8 @@ public class Menue {
                      Wähle den gesamten Zeitraum oder einen einzelnen Monat.
                   6) Mitarbeiter verwalten / 7) Projekte verwalten
                      Hinzufügen, umbenennen, löschen. Ein neuer Name gilt auch
-                     für alle alten Einträge.
+                     für alle alten Einträge. Jeder Mitarbeiter bekommt eine
+                     feste Kennung: AB_01 = Arbeiter 1, AB_02 = Arbeiter 2 usw.
                   0) Speichern und beenden
 
                 REGELN

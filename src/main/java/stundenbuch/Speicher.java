@@ -9,7 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Liest und schreibt die drei CSV-Dateien (Trennzeichen ;, UTF-8, keine Kopfzeile).
+ * Liest und schreibt die drei CSV-Dateien (Trennzeichen ;, UTF-8).
+ * eintraege.csv hat eine Kopfzeile, die die Spalten erklärt.
  * Redet nicht mit dem Benutzer: Fehler beim Speichern werden als Exception weitergegeben.
  */
 public class Speicher {
@@ -18,11 +19,36 @@ public class Speicher {
     private static final String PROJEKTE_DATEI = "projekte.csv";
     private static final String EINTRAEGE_DATEI = "eintraege.csv";
 
+    // Beginnt bewusst mit "Nr" und nicht mit "ID": Excel hält Dateien, die mit "ID" anfangen, für SYLK-Dateien
+    private static final String EINTRAEGE_KOPFZEILE = "Nr;Datum;Mitarbeiter;ProjektNr;Stunden;Beschreibung";
+
     private final Path ordner;
 
-    /** Speichert im Ordner "Stundenbuch" im Benutzerordner. */
+    /** Speichert im Ordner "Stundenbuch" auf dem Desktop. */
     public Speicher() {
-        this.ordner = Path.of(System.getProperty("user.home"), "Stundenbuch").toAbsolutePath();
+        this.ordner = findeDesktop().resolve("Stundenbuch").toAbsolutePath();
+    }
+
+    /**
+     * Sucht den Desktop. Ist die OneDrive-Sicherung aktiv, wurde er nach OneDrive verschoben
+     * und C:\Users\Name\Desktop gibt es nicht mehr.
+     */
+    private static Path findeDesktop() {
+        Path home = Path.of(System.getProperty("user.home")).toAbsolutePath();
+        Path desktop = home.resolve("Desktop");
+        if (Files.isDirectory(desktop)) {
+            return desktop;
+        }
+        // OneDrive nur nehmen, wenn es im Benutzerordner liegt. Sonst würde ein Probelauf
+        // mit -Duser.home=testdaten in den echten OneDrive-Ordner schreiben.
+        String oneDrive = System.getenv("OneDrive");
+        if (oneDrive != null) {
+            Path oneDriveDesktop = Path.of(oneDrive, "Desktop").toAbsolutePath();
+            if (oneDriveDesktop.startsWith(home) && Files.isDirectory(oneDriveDesktop)) {
+                return oneDriveDesktop;
+            }
+        }
+        return desktop; // wird beim Speichern angelegt
     }
 
     public Path getOrdner() {
@@ -36,7 +62,7 @@ public class Speicher {
 
         List<String> zeilen = new ArrayList<>();
         for (Mitarbeiter m : z.getMitarbeiter()) {
-            zeilen.add(m.getId() + ";" + escape(m.getName()));
+            zeilen.add(m.getKennung() + ";" + escape(m.getName()));
         }
         schreibe(MITARBEITER_DATEI, zeilen);
 
@@ -47,9 +73,10 @@ public class Speicher {
         schreibe(PROJEKTE_DATEI, zeilen);
 
         zeilen = new ArrayList<>();
+        zeilen.add(EINTRAEGE_KOPFZEILE);
         for (Eintrag e : z.getEintraege()) {
             // Datum als ISO (2026-10-05), Stunden mit Punkt (Double.toString ist unabhängig von der Sprache)
-            zeilen.add(e.getId() + ";" + e.getDatum() + ";" + e.getMitarbeiter().getId() + ";"
+            zeilen.add(e.getId() + ";" + e.getDatum() + ";" + e.getMitarbeiter().getKennung() + ";"
                     + e.getProjekt().getId() + ";" + e.getStunden() + ";" + escape(e.getBeschreibung()));
         }
         schreibe(EINTRAEGE_DATEI, zeilen);
@@ -68,7 +95,7 @@ public class Speicher {
         // Reihenfolge wichtig: Einträge brauchen schon geladene Mitarbeiter und Projekte
         for (String[] teile : lese(MITARBEITER_DATEI, 2)) {
             try {
-                z.ladeMitarbeiter(Integer.parseInt(teile[0]), unescape(teile[1]));
+                z.ladeMitarbeiter(idAusKennung(teile[0]), unescape(teile[1]));
             } catch (RuntimeException ex) {
                 // kaputte Zeile überspringen
             }
@@ -83,9 +110,12 @@ public class Speicher {
         }
 
         for (String[] teile : lese(EINTRAEGE_DATEI, 6)) {
+            if (String.join(";", teile).equals(EINTRAEGE_KOPFZEILE)) {
+                continue; // Kopfzeile ist kein Eintrag
+            }
             try {
-                // Aus den IDs wieder die echten Objekte machen
-                Mitarbeiter m = z.findeMitarbeiter(Integer.parseInt(teile[2]));
+                // Aus Kennung und Projektnummer wieder die echten Objekte machen
+                Mitarbeiter m = z.findeMitarbeiter(idAusKennung(teile[2]));
                 Projekt p = z.findeProjekt(Integer.parseInt(teile[3]));
                 if (m == null || p == null) {
                     continue; // verweist auf etwas, das es nicht gibt
@@ -117,6 +147,14 @@ public class Speicher {
             // Datei nicht lesbar: so tun, als wäre sie leer
         }
         return ergebnis;
+    }
+
+    /** Macht aus "AB_01" die Zahl 1. Ältere Dateien enthalten nur "1", das geht auch. */
+    static int idAusKennung(String text) {
+        if (text.startsWith(Mitarbeiter.KENNUNG_VORSILBE)) {
+            text = text.substring(Mitarbeiter.KENNUNG_VORSILBE.length());
+        }
+        return Integer.parseInt(text);
     }
 
     // ---------- Escaping ----------
