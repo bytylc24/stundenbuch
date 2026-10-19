@@ -163,8 +163,42 @@ public class Menue {
         }
     }
 
+    /** Jedes Feld einzeln abfragen; leere Eingabe (bzw. 0 bei Listen) behält den alten Wert. */
     private void eintragBearbeiten() {
-        System.out.println("Kommt in Schritt 8.");
+        Eintrag e = waehleEintrag();
+        if (e == null) {
+            return;
+        }
+        System.out.println("Eintrag #" + e.getId() + " bearbeiten (leere Eingabe = alten Wert behalten)");
+
+        // Erst alles abfragen, dann auf einmal übernehmen: kein halb geänderter Eintrag
+        LocalDate datum = leseDatum("Datum (alt: " + e.getDatum().format(DATUM_ANZEIGE) + "): ", e.getDatum());
+
+        System.out.println("Mitarbeiter (alt: " + e.getMitarbeiter().getName() + ")");
+        Mitarbeiter m = waehle("Mitarbeiter", zeiterfassung.getMitarbeiter(), Mitarbeiter::getName, "Behalten");
+        if (m == null) {
+            m = e.getMitarbeiter();
+        }
+
+        System.out.println("Projekt (alt: " + e.getProjekt().getName() + ")");
+        Projekt p = waehle("Projekt", zeiterfassung.getProjekte(), Projekt::getName, "Behalten");
+        if (p == null) {
+            p = e.getProjekt();
+        }
+
+        double stunden = leseStunden("Stunden (alt: " + String.format(DEUTSCH, "%.1f", e.getStunden()) + "): ",
+                e.getStunden());
+        String beschreibung = leseText("Was wurde gemacht? (alt: " + e.getBeschreibung() + "): ",
+                e.getBeschreibung());
+
+        e.setDatum(datum);
+        e.setMitarbeiter(m);
+        e.setProjekt(p);
+        e.setStunden(stunden);
+        e.setBeschreibung(beschreibung);
+        speichern();
+        System.out.println("Gespeichert: Eintrag #" + e.getId() + " (" + datum.format(DATUM_ANZEIGE) + ", "
+                + m.getName() + ", " + p.getName() + ", " + formatStunden(stunden) + ", " + beschreibung + ")");
     }
 
     private void eintragLoeschen() {
@@ -456,6 +490,11 @@ public class Menue {
      * Gibt null zurück bei 0 (abbrechen) oder wenn die Liste leer ist.
      */
     private <T> T waehle(String was, List<T> liste, Function<T, String> anzeige) {
+        return waehle(was, liste, anzeige, "Abbrechen");
+    }
+
+    /** Wie oben, aber mit eigenem Text für 0, z. B. "Behalten" beim Bearbeiten. */
+    private <T> T waehle(String was, List<T> liste, Function<T, String> anzeige, String textFuerNull) {
         if (liste.isEmpty()) {
             System.out.println("Keine " + was + " vorhanden.");
             return null;
@@ -464,7 +503,7 @@ public class Menue {
         for (int i = 0; i < liste.size(); i++) {
             System.out.println("  " + (i + 1) + ") " + anzeige.apply(liste.get(i)));
         }
-        System.out.println("  0) Abbrechen");
+        System.out.println("  0) " + textFuerNull);
         while (true) {
             int nr = leseZahl("Nummer: ");
             if (nr == 0) {
