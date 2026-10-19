@@ -42,8 +42,16 @@ Jede Änderung wird sofort gespeichert.
 
 ## .exe erstellen
 
-Mit `build-exe.bat` (Windows) entsteht `dist\Stundenbuch\Stundenbuch.exe`, die auch ohne installiertes Java läuft.
-Weitergeben muss man den ganzen Ordner `dist\Stundenbuch`, z. B. als ZIP.
+Doppelklick auf `build-exe.bat` (nur unter Windows). Das Skript erzeugt:
+
+- `dist\Stundenbuch\Stundenbuch.exe`: läuft auch ohne installiertes Java
+- `dist\Stundenbuch.zip` (ca. 16 MB): diese Datei verschickt man
+
+Die `.exe` allein funktioniert nicht, sie braucht den Ordner `runtime` daneben. Darum immer die ZIP weitergeben.
+
+**Für den Empfänger:** ZIP entpacken (Rechtsklick, „Alle extrahieren“) und `Stundenbuch.exe` doppelklicken.
+Weil die App nicht signiert ist, warnt Windows beim ersten Start („Der Computer wurde durch Windows geschützt“):
+„Weitere Informationen“ und dann „Trotzdem ausführen“ klicken. Die Daten landen bei ihm in `Desktop\Stundenbuch`.
 
 ## Testen (Probelauf)
 

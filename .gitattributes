@@ -1,0 +1,2 @@
+# Batch-Dateien brauchen Windows-Zeilenenden, sonst funktionieren Sprungmarken nicht zuverlässig
+*.bat text eol=crlf
