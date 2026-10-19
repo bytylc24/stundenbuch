@@ -1,0 +1,249 @@
+package stundenbuch;
+
+import java.io.Console;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
+import java.util.List;
+import java.util.Scanner;
+import java.util.function.Function;
+
+/**
+ * Ein- und Ausgabe im Terminal. Rechnet nicht und schreibt keine Dateien selbst.
+ */
+public class Menue {
+
+    // Erlaubt 05.10.2026 und 5.10.2026; STRICT lehnt Daten wie 31.02.2026 ab
+    private static final DateTimeFormatter DATUM_FORMAT =
+            DateTimeFormatter.ofPattern("d.M.uuuu").withResolverStyle(ResolverStyle.STRICT);
+
+    private final Scanner scanner;
+    private final Speicher speicher;
+    private Zeiterfassung zeiterfassung;
+
+    public Menue(Speicher speicher) {
+        this.speicher = speicher;
+        // Kodierung der Konsole verwenden, damit Umlaute unter Windows stimmen
+        Console c = System.console();
+        this.scanner = new Scanner(System.in, c != null ? c.charset() : Charset.defaultCharset());
+    }
+
+    /** Wird geworfen, wenn keine Eingabe mehr kommt (Strg+Z oder Ende der Testdatei). */
+    private static class EingabeEnde extends RuntimeException {
+    }
+
+    public void start() {
+        zeiterfassung = speicher.laden();
+        System.out.println("Deine Daten liegen in: " + speicher.getOrdner());
+
+        try {
+            boolean weiter = true;
+            while (weiter) {
+                zeigeHauptmenue();
+                int auswahl = leseZahl("Auswahl: ");
+                switch (auswahl) {
+                    case 1 -> eintragErfassen();
+                    case 2 -> eintraegeAnzeigen();
+                    case 3 -> eintragBearbeiten();
+                    case 4 -> eintragLoeschen();
+                    case 5 -> auswertungAnzeigen();
+                    case 6 -> mitarbeiterVerwalten();
+                    case 7 -> projekteVerwalten();
+                    case 0 -> weiter = false;
+                    default -> System.out.println("Bitte eine Zahl von 0 bis 7 eingeben.");
+                }
+            }
+        } catch (EingabeEnde ex) {
+            System.out.println();
+            System.out.println("Eingabe beendet.");
+        }
+
+        speichern();
+        System.out.println("Gespeichert. Auf Wiedersehen!");
+    }
+
+    private void zeigeHauptmenue() {
+        System.out.println();
+        System.out.println("===== STUNDENBUCH =====");
+        System.out.println("1) Eintrag erfassen");
+        System.out.println("2) Arbeitstage anzeigen");
+        System.out.println("3) Eintrag bearbeiten");
+        System.out.println("4) Eintrag löschen");
+        System.out.println("5) Auswertung (Stunden pro Projekt)");
+        System.out.println("6) Mitarbeiter verwalten");
+        System.out.println("7) Projekte verwalten");
+        System.out.println("0) Speichern und beenden");
+    }
+
+    // ---------- Menüpunkte (werden in den nächsten Schritten gebaut) ----------
+
+    private void eintragErfassen() {
+        System.out.println("Kommt in Schritt 7.");
+    }
+
+    private void eintraegeAnzeigen() {
+        System.out.println("Kommt in Schritt 7.");
+    }
+
+    private void eintragBearbeiten() {
+        System.out.println("Kommt in Schritt 8.");
+    }
+
+    private void eintragLoeschen() {
+        System.out.println("Kommt in Schritt 7.");
+    }
+
+    private void auswertungAnzeigen() {
+        System.out.println("Kommt in Schritt 9.");
+    }
+
+    private void mitarbeiterVerwalten() {
+        System.out.println("Kommt in Schritt 6.");
+    }
+
+    private void projekteVerwalten() {
+        System.out.println("Kommt in Schritt 6.");
+    }
+
+    // ---------- Speichern ----------
+
+    /** Speichert sofort. Bei einem Fehler nur warnen, nicht abstürzen. */
+    private void speichern() {
+        try {
+            speicher.speichern(zeiterfassung);
+        } catch (IOException ex) {
+            System.out.println("WARNUNG: Speichern fehlgeschlagen: " + ex.getMessage());
+        }
+    }
+
+    // ---------- Eingabe-Hilfsmethoden ----------
+
+    /** Liest eine Zeile (ohne Leerzeichen am Rand). Wirft EingabeEnde, wenn nichts mehr kommt. */
+    private String leseZeile(String text) {
+        System.out.print(text);
+        if (!scanner.hasNextLine()) {
+            throw new EingabeEnde();
+        }
+        // PowerShell setzt beim Weiterleiten mit | ein unsichtbares BOM (﻿) an den Anfang
+        return scanner.nextLine().replace("﻿", "").trim();
+    }
+
+    /** Fragt eine Zahl ab, bis eine gültige ganze Zahl eingegeben wird. */
+    private int leseZahl(String text) {
+        while (true) {
+            String eingabe = leseZeile(text);
+            try {
+                return Integer.parseInt(eingabe);
+            } catch (NumberFormatException ex) {
+                System.out.println("Bitte eine ganze Zahl eingeben.");
+            }
+        }
+    }
+
+    /** Fragt einen Text ab, der nicht leer sein darf. */
+    private String leseText(String text) {
+        return leseText(text, null);
+    }
+
+    /** Fragt einen Text ab. Leere Eingabe ergibt den Standardwert (null = Eingabe Pflicht). */
+    private String leseText(String text, String standard) {
+        while (true) {
+            String eingabe = leseZeile(text);
+            if (!eingabe.isEmpty()) {
+                return eingabe;
+            }
+            if (standard != null) {
+                return standard;
+            }
+            System.out.println("Die Eingabe darf nicht leer sein.");
+        }
+    }
+
+    /** Fragt Stunden ab: größer 0 bis höchstens 24, Komma oder Punkt erlaubt. */
+    private double leseStunden(String text) {
+        return leseStunden(text, null);
+    }
+
+    /** Wie oben, leere Eingabe ergibt den Standardwert (null = Eingabe Pflicht). */
+    private double leseStunden(String text, Double standard) {
+        while (true) {
+            String eingabe = leseZeile(text);
+            if (eingabe.isEmpty() && standard != null) {
+                return standard;
+            }
+            try {
+                double stunden = Double.parseDouble(eingabe.replace(',', '.'));
+                // Diese Prüfung lehnt auch "NaN" und "Infinity" ab
+                if (stunden > 0 && stunden <= 24) {
+                    return stunden;
+                }
+                System.out.println("Die Stunden müssen größer als 0 und höchstens 24 sein.");
+            } catch (NumberFormatException ex) {
+                System.out.println("Bitte eine Zahl eingeben, z. B. 4,5");
+            }
+        }
+    }
+
+    /** Fragt ein Datum TT.MM.JJJJ ab. Leere Eingabe ergibt heute. */
+    private LocalDate leseDatum(String text) {
+        return leseDatum(text, LocalDate.now());
+    }
+
+    /** Fragt ein Datum TT.MM.JJJJ ab. Leere Eingabe ergibt den Standardwert. */
+    private LocalDate leseDatum(String text, LocalDate standard) {
+        while (true) {
+            String eingabe = leseZeile(text);
+            if (eingabe.isEmpty()) {
+                return standard;
+            }
+            try {
+                return LocalDate.parse(eingabe, DATUM_FORMAT);
+            } catch (DateTimeParseException ex) {
+                System.out.println("Ungültiges Datum. Bitte im Format TT.MM.JJJJ eingeben, z. B. 05.10.2026");
+            }
+        }
+    }
+
+    /** Fragt j oder n ab. */
+    private boolean bestaetige(String frage) {
+        while (true) {
+            String eingabe = leseZeile(frage + " (j/n) ").toLowerCase();
+            if (eingabe.equals("j")) {
+                return true;
+            }
+            if (eingabe.equals("n")) {
+                return false;
+            }
+            System.out.println("Bitte j oder n eingeben.");
+        }
+    }
+
+    /**
+     * Zeigt eine nummerierte Liste und lässt ein Element wählen.
+     * Gibt null zurück bei 0 (abbrechen) oder wenn die Liste leer ist.
+     */
+    private <T> T waehle(String was, List<T> liste, Function<T, String> anzeige) {
+        if (liste.isEmpty()) {
+            System.out.println("Keine " + was + " vorhanden.");
+            return null;
+        }
+        System.out.println(was + " wählen:");
+        for (int i = 0; i < liste.size(); i++) {
+            System.out.println("  " + (i + 1) + ") " + anzeige.apply(liste.get(i)));
+        }
+        System.out.println("  0) Abbrechen");
+        while (true) {
+            int nr = leseZahl("Nummer: ");
+            if (nr == 0) {
+                return null;
+            }
+            if (nr >= 1 && nr <= liste.size()) {
+                return liste.get(nr - 1);
+            }
+            System.out.println("Bitte eine Zahl von 0 bis " + liste.size() + " eingeben.");
+        }
+    }
+}
