@@ -1,7 +1,10 @@
 package stundenbuch;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDate;
-import java.time.YearMonth;
 
 /**
  * Startpunkt der Anwendung.
@@ -9,50 +12,42 @@ import java.time.YearMonth;
  */
 public class Main {
 
-    public static void main(String[] args) {
-        // TESTCODE Schritt 3: wird in Schritt 5 entfernt
+    public static void main(String[] args) throws IOException {
+        // TESTCODE Schritt 4: wird in Schritt 5 entfernt
+        Speicher speicher = new Speicher();
+        System.out.println("Ordner: " + speicher.getOrdner());
+
+        Zeiterfassung leer = speicher.laden();
+        System.out.println("Erster Start, Mitarbeiter: " + leer.getMitarbeiter().size() + " (erwartet 0)");
+
         Zeiterfassung z = new Zeiterfassung();
         Mitarbeiter jonas = z.addMitarbeiter("Jonas");
         Mitarbeiter lena = z.addMitarbeiter("Lena");
-        Mitarbeiter max = z.addMitarbeiter("Max");
         Projekt graz = z.addProjekt("Graz", "Mustermann");
-        Projekt wien = z.addProjekt("Wien", "Huber");
-
+        Projekt wien = z.addProjekt("Wien", "Huber; Söhne");
         z.addEintrag(LocalDate.of(2026, 10, 5), jonas, graz, 10.0, "Konzept erstellt");
-        z.addEintrag(LocalDate.of(2026, 10, 5), jonas, wien, 5.0, "Datenbank aufgesetzt");
-        z.addEintrag(LocalDate.of(2026, 10, 6), lena, graz, 20.0, "Programmiert");
-        z.addEintrag(LocalDate.of(2026, 9, 28), lena, wien, 3.0, "Besprechung");
+        z.addEintrag(LocalDate.of(2026, 10, 6), lena, wien, 4.5, "Tabellen; Indizes; Pfad C:\\daten\\s1");
+        speicher.speichern(z);
 
-        YearMonth oktober = YearMonth.of(2026, 10);
+        // Eine kaputte Zeile anhängen: muss beim Laden übersprungen werden
+        Files.writeString(speicher.getOrdner().resolve("eintraege.csv"), "kaputt;abc\n",
+                StandardCharsets.UTF_8, StandardOpenOption.APPEND);
 
-        System.out.println("--- Stunden gesamt (alle Monate) ---");
-        System.out.println("Jonas @ Graz: " + z.getStunden(graz, jonas, null) + " (erwartet 10.0)");
-        System.out.println("Jonas @ Wien: " + z.getStunden(wien, jonas, null) + " (erwartet 5.0)");
-        System.out.println("Graz gesamt:  " + z.getStundenGesamt(graz, null) + " (erwartet 30.0)");
-        System.out.println("Wien gesamt:  " + z.getStundenGesamt(wien, null) + " (erwartet 8.0)");
-        System.out.println("Lena gesamt:  " + z.getStundenGesamt(lena, null) + " (erwartet 23.0)");
-        System.out.println("Max gesamt:   " + z.getStundenGesamt(max, null) + " (erwartet 0.0)");
-        System.out.println("Alles:        " + z.getStundenGesamt(null) + " (erwartet 38.0)");
-
-        System.out.println("--- Monatsfilter Oktober 2026 ---");
-        System.out.println("Wien Oktober: " + z.getStundenGesamt(wien, oktober) + " (erwartet 5.0)");
-        System.out.println("Lena Oktober: " + z.getStundenGesamt(lena, oktober) + " (erwartet 20.0)");
-        System.out.println("Monate:       " + z.getMonateMitEintraegen() + " (erwartet [2026-10, 2026-09])");
-
-        System.out.println("--- Sortierung nach Datum ---");
-        for (Eintrag e : z.getEintraegeNachDatum()) {
-            System.out.println("  #" + e.getId() + " " + e.getDatum() + " " + e.getMitarbeiter() + " " + e.getProjekt());
+        Zeiterfassung geladen = speicher.laden();
+        System.out.println("--- Nach dem Laden ---");
+        System.out.println("Mitarbeiter: " + geladen.getMitarbeiter() + " (erwartet [Jonas, Lena])");
+        System.out.println("Projekte:    " + geladen.getProjekte() + " (erwartet [Graz/Mustermann, Wien/Huber; Söhne])");
+        System.out.println("Einträge:    " + geladen.getEintraege().size() + " (erwartet 2, kaputte Zeile übersprungen)");
+        for (Eintrag e : geladen.getEintraege()) {
+            System.out.println("  #" + e.getId() + " " + e.getDatum() + " " + e.getMitarbeiter() + " "
+                    + e.getProjekt() + " " + e.getStunden() + " h: " + e.getBeschreibung());
         }
-
-        System.out.println("--- Regeln ---");
-        System.out.println("Doppelt 'lena' anlegen:    " + z.addMitarbeiter("lena") + " (erwartet null)");
-        System.out.println("Doppelt 'graz/MUSTERMANN': " + z.addProjekt("graz", "MUSTERMANN") + " (erwartet null)");
-        System.out.println("Lena löschen (hat Einträge): " + z.loescheMitarbeiter(lena) + " (erwartet false)");
-        System.out.println("Wien löschen (hat Einträge): " + z.loescheProjekt(wien) + " (erwartet false)");
-        System.out.println("Max löschen (keine Einträge): " + z.loescheMitarbeiter(max) + " (erwartet true)");
-        Mitarbeiter neu = z.addMitarbeiter("Sara");
-        System.out.println("Neue ID nach Löschen von Max (#3): " + neu.getId() + " (erwartet 4)");
-        System.out.println("findeMitarbeiter(2): " + z.findeMitarbeiter(2) + " (erwartet Lena)");
-        System.out.println("findeMitarbeiter(3): " + z.findeMitarbeiter(3) + " (erwartet null)");
+        Eintrag e2 = geladen.findeEintrag(2);
+        boolean gleich = e2.getBeschreibung().equals("Tabellen; Indizes; Pfad C:\\daten\\s1");
+        System.out.println("Text mit ; und \\ gleich wie vorher: " + gleich + " (erwartet true)");
+        boolean selbesObjekt = e2.getMitarbeiter() == geladen.findeMitarbeiter(2);
+        System.out.println("Eintrag zeigt auf dasselbe Lena-Objekt: " + selbesObjekt + " (erwartet true)");
+        System.out.println("Stunden Wien: " + geladen.getStundenGesamt(geladen.findeProjekt(2), null) + " (erwartet 4.5)");
+        System.out.println("Neue ID nach Laden: " + geladen.addMitarbeiter("Max").getId() + " (erwartet 3)");
     }
 }

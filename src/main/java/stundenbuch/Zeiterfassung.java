@@ -50,6 +50,23 @@ public class Zeiterfassung {
         return e;
     }
 
+    // ---------- Laden (nur für den Speicher: übernimmt die gespeicherte ID) ----------
+
+    void ladeMitarbeiter(int id, String name) {
+        mitarbeiter.add(new Mitarbeiter(id, name));
+        naechsteMitarbeiterId = Math.max(naechsteMitarbeiterId, id + 1);
+    }
+
+    void ladeProjekt(int id, String ort, String kunde) {
+        projekte.add(new Projekt(id, ort, kunde));
+        naechsteProjektId = Math.max(naechsteProjektId, id + 1);
+    }
+
+    void ladeEintrag(int id, LocalDate datum, Mitarbeiter m, Projekt p, double stunden, String text) {
+        eintraege.add(new Eintrag(id, datum, m, p, stunden, text));
+        naechsteEintragId = Math.max(naechsteEintragId, id + 1);
+    }
+
     // ---------- Löschen ----------
 
     /** Löscht den Mitarbeiter. Gibt false zurück, wenn er noch Einträge hat (Löschschutz). */
