@@ -63,8 +63,9 @@ public class Menue {
                     case 5 -> auswertungAnzeigen();
                     case 6 -> mitarbeiterVerwalten();
                     case 7 -> projekteVerwalten();
+                    case 8 -> hilfeAnzeigen();
                     case 0 -> weiter = false;
-                    default -> System.out.println("Bitte eine Zahl von 0 bis 7 eingeben.");
+                    default -> System.out.println("Bitte eine Zahl von 0 bis 8 eingeben.");
                 }
             }
         } catch (EingabeEnde ex) {
@@ -86,10 +87,11 @@ public class Menue {
         System.out.println("5) Auswertung (Stunden pro Projekt)");
         System.out.println("6) Mitarbeiter verwalten");
         System.out.println("7) Projekte verwalten");
+        System.out.println("8) Hilfe");
         System.out.println("0) Speichern und beenden");
     }
 
-    // ---------- Menüpunkte (werden in den nächsten Schritten gebaut) ----------
+    // ---------- Menüpunkte ----------
 
     private void eintragErfassen() {
         if (zeiterfassung.getMitarbeiter().isEmpty() || zeiterfassung.getProjekte().isEmpty()) {
@@ -431,6 +433,51 @@ public class Menue {
         System.out.println("Gelöscht: " + p.getName());
     }
 
+    /** Erklärt das ganze Programm: Menüpunkte, Regeln und wo die Daten liegen. */
+    private void hilfeAnzeigen() {
+        System.out.println("""
+
+                ===== HILFE =====
+                Das Stundenbuch erfasst, wer wann an welchem Projekt wie viele Stunden
+                gearbeitet hat und was gemacht wurde. Die Stunden werden pro Projekt und
+                pro Mitarbeiter zusammengezählt.
+
+                SO FÄNGST DU AN
+                  1. Mitarbeiter anlegen (Menüpunkt 6)
+                  2. Projekte anlegen (Menüpunkt 7), ein Projekt besteht aus Ort und Kunde
+                  3. Einträge erfassen (Menüpunkt 1)
+
+                DIE MENÜPUNKTE
+                  1) Eintrag erfassen
+                     Datum (TT.MM.JJJJ, leer = heute), Mitarbeiter, Projekt,
+                     Stunden (z. B. 4,5, erlaubt: mehr als 0 bis 24) und Beschreibung.
+                  2) Arbeitstage anzeigen
+                     Alle Einträge nach Tag, neuester zuerst, mit Tagessumme.
+                     Die Zahl nach # brauchst du zum Bearbeiten und Löschen.
+                  3) Eintrag bearbeiten
+                     #-Nummer wählen, dann jedes Feld neu eingeben.
+                     Leere Eingabe (bzw. 0 bei Listen) behält den alten Wert.
+                  4) Eintrag löschen
+                     #-Nummer wählen und mit j bestätigen.
+                  5) Auswertung
+                     Tabelle Projekte x Mitarbeiter mit Gesamt und Summe.
+                     Wähle den gesamten Zeitraum oder einen einzelnen Monat.
+                  6) Mitarbeiter verwalten / 7) Projekte verwalten
+                     Hinzufügen, umbenennen, löschen. Ein neuer Name gilt auch
+                     für alle alten Einträge.
+                  0) Speichern und beenden
+
+                REGELN
+                  - Doppelte Namen sind nicht erlaubt (Groß-/Kleinschreibung egal).
+                  - Wer noch Einträge hat, kann nicht gelöscht werden.
+                    Lösche zuerst die Einträge.
+                  - In Listen bedeutet 0 immer: abbrechen bzw. behalten.
+                  - Jede Änderung wird sofort gespeichert.
+                """);
+        System.out.println("Deine Daten liegen in: " + speicher.getOrdner());
+        System.out.println("(mitarbeiter.csv, projekte.csv, eintraege.csv)");
+    }
+
     // ---------- Formatieren ----------
 
     /** Stunden mit Komma und einer Nachkommastelle, z. B. "4,5 h". */
@@ -457,8 +504,8 @@ public class Menue {
         if (!scanner.hasNextLine()) {
             throw new EingabeEnde();
         }
-        // PowerShell setzt beim Weiterleiten mit | ein unsichtbares BOM (﻿) an den Anfang
-        return scanner.nextLine().replace("﻿", "").trim();
+        // PowerShell setzt beim Weiterleiten mit | ein unsichtbares BOM (Zeichen U+FEFF) an den Anfang
+        return scanner.nextLine().replace(String.valueOf((char) 0xFEFF), "").trim();
     }
 
     /** Fragt eine Zahl ab, bis eine gültige ganze Zahl eingegeben wird. */
