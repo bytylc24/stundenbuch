@@ -128,6 +128,14 @@ public class Zeiterfassung {
                 .sum();
     }
 
+    /** Alle Stunden eines Tages (für die Tagessumme bei "Arbeitstage anzeigen"). */
+    public double getStundenAmTag(LocalDate datum) {
+        return eintraege.stream()
+                .filter(e -> e.getDatum().equals(datum))
+                .mapToDouble(Eintrag::getStunden)
+                .sum();
+    }
+
     /** Alle Monate, in denen es Einträge gibt, neuester zuerst. */
     public List<YearMonth> getMonateMitEintraegen() {
         return eintraege.stream()

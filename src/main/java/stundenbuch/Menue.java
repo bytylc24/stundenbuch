@@ -24,6 +24,10 @@ public class Menue {
     // Österreichisches Format: Komma als Dezimaltrennzeichen
     private static final Locale DEUTSCH = Locale.forLanguageTag("de-AT");
 
+    // Anzeige: 05.10.2026 und mit Wochentag "Mo., 05.10.2026"
+    private static final DateTimeFormatter DATUM_ANZEIGE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+    private static final DateTimeFormatter TAG_ANZEIGE = DateTimeFormatter.ofPattern("EE, dd.MM.yyyy", DEUTSCH);
+
     private final Scanner scanner;
     private final Speicher speicher;
     private Zeiterfassung zeiterfassung;
@@ -85,11 +89,78 @@ public class Menue {
     // ---------- Menüpunkte (werden in den nächsten Schritten gebaut) ----------
 
     private void eintragErfassen() {
-        System.out.println("Kommt in Schritt 7.");
+        if (zeiterfassung.getMitarbeiter().isEmpty() || zeiterfassung.getProjekte().isEmpty()) {
+            System.out.println("Lege zuerst mindestens einen Mitarbeiter (6) und ein Projekt (7) an.");
+            return;
+        }
+        LocalDate datum = leseDatum("Datum (TT.MM.JJJJ, leer = heute): ");
+        Mitarbeiter m = waehle("Mitarbeiter", zeiterfassung.getMitarbeiter(), Mitarbeiter::getName);
+        if (m == null) {
+            System.out.println("Abgebrochen.");
+            return;
+        }
+        Projekt p = waehle("Projekt", zeiterfassung.getProjekte(), Projekt::getName);
+        if (p == null) {
+            System.out.println("Abgebrochen.");
+            return;
+        }
+        double stunden = leseStunden("Stunden: ");
+        String beschreibung = leseText("Was wurde gemacht? ");
+
+        Eintrag e = zeiterfassung.addEintrag(datum, m, p, stunden, beschreibung);
+        speichern();
+        System.out.println("Gespeichert: Eintrag #" + e.getId() + " (" + e.getDatum().format(DATUM_ANZEIGE)
+                + ", " + m.getName() + ", " + p.getName() + ", " + formatStunden(stunden) + ")");
     }
 
+    /** Zeigt alle Einträge gruppiert nach Tag, neuester Tag zuerst, mit Tagessumme. */
     private void eintraegeAnzeigen() {
-        System.out.println("Kommt in Schritt 7.");
+        List<Eintrag> liste = zeiterfassung.getEintraegeNachDatum();
+        if (liste.isEmpty()) {
+            System.out.println("Noch keine Einträge.");
+            return;
+        }
+        // Spaltenbreiten nach dem längsten Namen richten
+        int breiteM = liste.stream().mapToInt(e -> e.getMitarbeiter().getName().length()).max().orElse(0);
+        int breiteP = liste.stream().mapToInt(e -> e.getProjekt().getName().length()).max().orElse(0);
+
+        LocalDate letzterTag = null;
+        for (Eintrag e : liste) {
+            if (!e.getDatum().equals(letzterTag)) {
+                letzterTag = e.getDatum();
+                System.out.println();
+                System.out.println(letzterTag.format(TAG_ANZEIGE) + "   (gesamt "
+                        + formatStunden(zeiterfassung.getStundenAmTag(letzterTag)) + ")");
+                System.out.println("-".repeat(60));
+            }
+            System.out.printf("  %-6s %-" + breiteM + "s  %-" + breiteP + "s  %8s%n",
+                    "[#" + e.getId() + "]", e.getMitarbeiter().getName(), e.getProjekt().getName(),
+                    formatStunden(e.getStunden()));
+            System.out.println("         " + e.getBeschreibung());
+        }
+    }
+
+    /**
+     * Zeigt die Arbeitstage und fragt nach der #-Nummer eines Eintrags.
+     * Gibt null zurück bei 0 oder wenn es keine Einträge gibt.
+     */
+    private Eintrag waehleEintrag() {
+        eintraegeAnzeigen();
+        if (zeiterfassung.getEintraege().isEmpty()) {
+            return null;
+        }
+        System.out.println();
+        while (true) {
+            int id = leseZahl("Nummer des Eintrags (#, 0 = abbrechen): ");
+            if (id == 0) {
+                return null;
+            }
+            Eintrag e = zeiterfassung.findeEintrag(id);
+            if (e != null) {
+                return e;
+            }
+            System.out.println("Es gibt keinen Eintrag #" + id + ".");
+        }
     }
 
     private void eintragBearbeiten() {
@@ -97,7 +168,19 @@ public class Menue {
     }
 
     private void eintragLoeschen() {
-        System.out.println("Kommt in Schritt 7.");
+        Eintrag e = waehleEintrag();
+        if (e == null) {
+            return;
+        }
+        String frage = "Eintrag #" + e.getId() + " (" + e.getDatum().format(DATUM_ANZEIGE) + ", "
+                + e.getMitarbeiter().getName() + ") wirklich löschen?";
+        if (!bestaetige(frage)) {
+            System.out.println("Nicht gelöscht.");
+            return;
+        }
+        zeiterfassung.loescheEintrag(e);
+        speichern();
+        System.out.println("Eintrag #" + e.getId() + " gelöscht.");
     }
 
     private void auswertungAnzeigen() {
