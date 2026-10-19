@@ -8,6 +8,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
 import java.util.List;
+import java.util.Locale;
 import java.util.Scanner;
 import java.util.function.Function;
 
@@ -19,6 +20,9 @@ public class Menue {
     // Erlaubt 05.10.2026 und 5.10.2026; STRICT lehnt Daten wie 31.02.2026 ab
     private static final DateTimeFormatter DATUM_FORMAT =
             DateTimeFormatter.ofPattern("d.M.uuuu").withResolverStyle(ResolverStyle.STRICT);
+
+    // Österreichisches Format: Komma als Dezimaltrennzeichen
+    private static final Locale DEUTSCH = Locale.forLanguageTag("de-AT");
 
     private final Scanner scanner;
     private final Speicher speicher;
@@ -101,11 +105,154 @@ public class Menue {
     }
 
     private void mitarbeiterVerwalten() {
-        System.out.println("Kommt in Schritt 6.");
+        while (true) {
+            System.out.println();
+            System.out.println("--- Mitarbeiter ---");
+            List<Mitarbeiter> liste = zeiterfassung.getMitarbeiter();
+            if (liste.isEmpty()) {
+                System.out.println("  (noch keine)");
+            }
+            int breite = liste.stream().mapToInt(m -> m.getName().length()).max().orElse(0);
+            for (Mitarbeiter m : liste) {
+                System.out.printf("  %-" + breite + "s  %8s%n",
+                        m.getName(), formatStunden(zeiterfassung.getStundenGesamt(m, null)));
+            }
+            System.out.println("1) Hinzufügen   2) Umbenennen   3) Löschen   0) Zurück");
+
+            switch (leseZahl("Auswahl: ")) {
+                case 1 -> mitarbeiterHinzufuegen();
+                case 2 -> mitarbeiterUmbenennen();
+                case 3 -> mitarbeiterLoeschen();
+                case 0 -> {
+                    return;
+                }
+                default -> System.out.println("Bitte eine Zahl von 0 bis 3 eingeben.");
+            }
+        }
+    }
+
+    private void mitarbeiterHinzufuegen() {
+        String name = leseText("Name: ");
+        if (zeiterfassung.addMitarbeiter(name) == null) {
+            System.out.println("Den Namen " + name + " gibt es schon.");
+            return;
+        }
+        speichern();
+        System.out.println("Angelegt: " + name);
+    }
+
+    private void mitarbeiterUmbenennen() {
+        Mitarbeiter m = waehle("Mitarbeiter", zeiterfassung.getMitarbeiter(), Mitarbeiter::getName);
+        if (m == null) {
+            return;
+        }
+        String neu = leseText("Neuer Name (alt: " + m.getName() + "): ", m.getName());
+        // Nur die Schreibweise des eigenen Namens zu ändern ist erlaubt
+        if (!neu.equalsIgnoreCase(m.getName()) && zeiterfassung.istMitarbeiterNameVergeben(neu)) {
+            System.out.println("Den Namen " + neu + " gibt es schon.");
+            return;
+        }
+        m.setName(neu);
+        speichern();
+        System.out.println("Umbenannt in: " + neu);
+    }
+
+    private void mitarbeiterLoeschen() {
+        Mitarbeiter m = waehle("Mitarbeiter", zeiterfassung.getMitarbeiter(), Mitarbeiter::getName);
+        if (m == null) {
+            return;
+        }
+        if (!bestaetige("Mitarbeiter " + m.getName() + " wirklich löschen?")) {
+            System.out.println("Nicht gelöscht.");
+            return;
+        }
+        if (!zeiterfassung.loescheMitarbeiter(m)) {
+            System.out.println("Geht nicht: " + m.getName() + " hat noch Einträge. Lösche diese zuerst.");
+            return;
+        }
+        speichern();
+        System.out.println("Gelöscht: " + m.getName());
     }
 
     private void projekteVerwalten() {
-        System.out.println("Kommt in Schritt 6.");
+        while (true) {
+            System.out.println();
+            System.out.println("--- Projekte ---");
+            List<Projekt> liste = zeiterfassung.getProjekte();
+            if (liste.isEmpty()) {
+                System.out.println("  (noch keine)");
+            }
+            int breite = liste.stream().mapToInt(p -> p.getName().length()).max().orElse(0);
+            for (Projekt p : liste) {
+                System.out.printf("  %-" + breite + "s  %8s%n",
+                        p.getName(), formatStunden(zeiterfassung.getStundenGesamt(p, null)));
+            }
+            System.out.println("1) Hinzufügen   2) Umbenennen   3) Löschen   0) Zurück");
+
+            switch (leseZahl("Auswahl: ")) {
+                case 1 -> projektHinzufuegen();
+                case 2 -> projektUmbenennen();
+                case 3 -> projektLoeschen();
+                case 0 -> {
+                    return;
+                }
+                default -> System.out.println("Bitte eine Zahl von 0 bis 3 eingeben.");
+            }
+        }
+    }
+
+    private void projektHinzufuegen() {
+        String ort = leseText("Ort: ");
+        String kunde = leseText("Kunde: ");
+        Projekt p = zeiterfassung.addProjekt(ort, kunde);
+        if (p == null) {
+            System.out.println("Das Projekt " + ort + "/" + kunde + " gibt es schon.");
+            return;
+        }
+        speichern();
+        System.out.println("Angelegt: " + p.getName());
+    }
+
+    private void projektUmbenennen() {
+        Projekt p = waehle("Projekt", zeiterfassung.getProjekte(), Projekt::getName);
+        if (p == null) {
+            return;
+        }
+        String ort = leseText("Ort (alt: " + p.getOrt() + "): ", p.getOrt());
+        String kunde = leseText("Kunde (alt: " + p.getKunde() + "): ", p.getKunde());
+        String neuerName = ort + "/" + kunde;
+        if (!neuerName.equalsIgnoreCase(p.getName()) && zeiterfassung.istProjektNameVergeben(ort, kunde)) {
+            System.out.println("Das Projekt " + neuerName + " gibt es schon.");
+            return;
+        }
+        p.setOrt(ort);
+        p.setKunde(kunde);
+        speichern();
+        System.out.println("Umbenannt in: " + p.getName());
+    }
+
+    private void projektLoeschen() {
+        Projekt p = waehle("Projekt", zeiterfassung.getProjekte(), Projekt::getName);
+        if (p == null) {
+            return;
+        }
+        if (!bestaetige("Projekt " + p.getName() + " wirklich löschen?")) {
+            System.out.println("Nicht gelöscht.");
+            return;
+        }
+        if (!zeiterfassung.loescheProjekt(p)) {
+            System.out.println("Geht nicht: " + p.getName() + " hat noch Einträge. Lösche diese zuerst.");
+            return;
+        }
+        speichern();
+        System.out.println("Gelöscht: " + p.getName());
+    }
+
+    // ---------- Formatieren ----------
+
+    /** Stunden mit Komma und einer Nachkommastelle, z. B. "4,5 h". */
+    private static String formatStunden(double stunden) {
+        return String.format(DEUTSCH, "%.1f h", stunden);
     }
 
     // ---------- Speichern ----------
