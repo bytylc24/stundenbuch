@@ -76,3 +76,59 @@ Get-Content testeingaben\schritt10.txt | java "-Duser.home=testdaten" -jar targe
 | `Mitarbeiter` | Datenklasse: id, name |
 | `Projekt` | Datenklasse: id, ort, kunde |
 | `Eintrag` | Datenklasse: id, datum, mitarbeiter, projekt, stunden, beschreibung |
+
+## Weiterarbeiten (Notizen für später)
+
+### Wo liegt was?
+
+| Was | Wo |
+|---|---|
+| Projekt (Code) | `Desktop\Stundenerfassung_v01` |
+| GitHub | https://github.com/bytylc24/stundenbuch (Branch `main`) |
+| Fertige App zum Weitergeben | `dist\Stundenbuch.zip` (entsteht durch `build-exe.bat`) |
+| Bauplan, nach dem die App entstanden ist | `STUNDENBUCH_SPEC.md` |
+| Testeingaben für die Probeläufe | `testeingaben\schritt1.txt` bis `schritt10b.txt` |
+
+Ist der Ordner weg oder du arbeitest an einem anderen PC: `git clone https://github.com/bytylc24/stundenbuch.git`
+
+### Projekt öffnen
+
+- **IntelliJ:** *File, Open*, den Projektordner (oder die `pom.xml`) wählen. Als SDK ein JDK ab 17 nehmen (z. B. `openjdk-25` unter `%USERPROFILE%\.jdks`).
+- **Starten in IntelliJ:** `Main.java` öffnen, grüner Pfeil neben `main`.
+- Java und Maven sind auf diesem PC **nicht im PATH**, sie kommen von IntelliJ:
+  - JDK: `%USERPROFILE%\.jdks\openjdk-25.0.2`
+  - Maven: `%LOCALAPPDATA%\Programs\IntelliJ IDEA 2025.2.2\plugins\maven\lib\maven3\bin\mvn.cmd`
+  - Nach einem IntelliJ-Update ändert sich der Maven-Pfad. Dann auch oben in `build-exe.bat` anpassen.
+
+### Was ändere ich wo?
+
+| Ich will ... | Datei |
+|---|---|
+| Menütexte, neue Menüpunkte, Eingaben, Anzeige, Hilfetext | `Menue.java` |
+| neue Berechnungen oder Regeln (z. B. Summen, Löschschutz) | `Zeiterfassung.java` |
+| Speicherort, CSV-Format, Kopfzeile | `Speicher.java` |
+| neue Felder (z. B. Telefonnummer beim Mitarbeiter) | Datenklasse **und** `Speicher.java` (Schreiben und Laden) **und** `Menue.java` (Eingabe) |
+| Kennung `AB_01` ändern | `Mitarbeiter.java` (`KENNUNG_VORSILBE`) |
+
+Regeln, die das Projekt sauber halten:
+- `Zeiterfassung` benutzt nie `System.out`, nur `Menue` redet mit dem Benutzer.
+- `Eintrag` speichert Objekte (`Mitarbeiter`, `Projekt`), keine Namen. Darum wirkt Umbenennen überall.
+- Bei Änderungen am CSV-Format: **alte Dateien müssen weiter ladbar sein**, sonst sind bei allen Benutzern die Daten weg. So wurde es schon für `1` und `AB_01` gelöst (`Speicher.idAusKennung`).
+
+### Nach einer Änderung
+
+1. **Testen** mit einem Testordner (nie mit echten Daten), in PowerShell:
+   ```
+   mvn -q package
+   Get-Content testeingaben\schritt10.txt | java "-Duser.home=testdaten" -jar target\stundenbuch-1.0.jar
+   ```
+   `schritt10.txt` ist der Gesamt-Probelauf. Für eine neue Funktion eine eigene Testdatei mit Falscheingaben anlegen.
+2. **Committen und pushen:** `git add .`, `git commit -m "..."`, `git push`
+3. **Neue .exe:** Doppelklick auf `build-exe.bat`, ergibt eine neue `dist\Stundenbuch.zip`.
+4. **Update bei anderen:** Dort den Ordner `Stundenbuch` (die App) löschen und die neue ZIP entpacken.
+   Der Ordner `Stundenbuch-Daten` bleibt unangetastet, die Daten bleiben erhalten.
+
+### Mit Claude Code weiterarbeiten
+
+Im Projektordner ein Terminal öffnen, `claude` starten und z. B. schreiben:
+*„Lies README.md und STUNDENBUCH_SPEC.md. Ich möchte ... ändern.“*
