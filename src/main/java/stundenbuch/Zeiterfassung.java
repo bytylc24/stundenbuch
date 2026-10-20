@@ -18,7 +18,7 @@ public class Zeiterfassung {
     private final List<Eintrag> eintraege = new ArrayList<>();
 
     // Nächste freie IDs. Sie wachsen nur, damit gelöschte IDs nie wieder vergeben werden.
-    // Ausnahme: Ist die Mitarbeiterliste ganz leer, beginnt sie wieder bei 1 (AB_01).
+    // Ausnahme: Ist eine Liste ganz leer, beginnt ihre Nummer wieder bei 1 (AB_01, Projekt 1, #1).
     private int naechsteMitarbeiterId = 1;
     private int naechsteProjektId = 1;
     private int naechsteEintragId = 1;
@@ -42,17 +42,27 @@ public class Zeiterfassung {
         return m;
     }
 
-    /** Legt ein Projekt an. Gibt null zurück, wenn Ort/Kunde schon vergeben ist. */
+    /**
+     * Legt ein Projekt an. Gibt null zurück, wenn Ort/Kunde schon vergeben ist.
+     * Ist die Liste leer, beginnt die Nummer wieder bei 1 (sicher, siehe addMitarbeiter).
+     */
     public Projekt addProjekt(String ort, String kunde) {
         if (istProjektNameVergeben(ort, kunde)) {
             return null;
+        }
+        if (projekte.isEmpty()) {
+            naechsteProjektId = 1;
         }
         Projekt p = new Projekt(naechsteProjektId++, ort, kunde);
         projekte.add(p);
         return p;
     }
 
+    /** Legt einen Eintrag an. Gibt es keine Einträge mehr, beginnt die #-Nummer wieder bei 1. */
     public Eintrag addEintrag(LocalDate datum, Mitarbeiter m, Projekt p, double stunden, String text) {
+        if (eintraege.isEmpty()) {
+            naechsteEintragId = 1;
+        }
         Eintrag e = new Eintrag(naechsteEintragId++, datum, m, p, stunden, text);
         eintraege.add(e);
         return e;

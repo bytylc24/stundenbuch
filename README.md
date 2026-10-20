@@ -63,7 +63,8 @@ Gut zu wissen:
 - Wer noch Einträge hat, kann nicht gelöscht werden. Lösche zuerst die Einträge.
 - Umbenennen wirkt auch auf alle alten Einträge.
 - Jeder Mitarbeiter bekommt eine feste Kennung: `AB_01` = Arbeiter 1, `AB_02` = Arbeiter 2 usw.
-  Gelöschte Kennungen werden nicht neu vergeben. Nur wenn alle Mitarbeiter gelöscht sind, beginnt es wieder bei `AB_01`.
+- Gelöschte Nummern werden nicht neu vergeben. Ausnahme: Sind **alle** Mitarbeiter gelöscht, beginnt
+  die Kennung wieder bei `AB_01`. Genauso bei Projekten (wieder Nr. 1) und Einträgen (wieder `#1`).
 
 ## 3. Bericht als Word oder Excel speichern
 
@@ -183,6 +184,7 @@ Get-Content testeingaben\schritt10.txt | java "-Duser.home=testdaten" -jar targe
 | `schritt1.txt` bis `schritt10b.txt` | die Grundfunktionen; `schritt10.txt` ist der Gesamt-Probelauf |
 | `schritt12.txt` | den Bericht (alle Filter, leeres Ergebnis, Überschreiben) |
 | `schritt13.txt` | Kennungen: nach Löschen aller Mitarbeiter wieder `AB_01`, sonst weiterzählen |
+| `schritt14.txt` | dasselbe für Projekt-Nummern und `#`-Nummern der Einträge |
 
 `schritt12.txt` enthält Umlaute. Dafür in der Git Bash starten statt in PowerShell:
 `java -Duser.home=testdaten -jar target/stundenbuch-1.0.jar < testeingaben/schritt12.txt`
