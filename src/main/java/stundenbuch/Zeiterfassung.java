@@ -145,6 +145,15 @@ public class Zeiterfassung {
                 .toList();
     }
 
+    /** Alle Jahre, in denen es Einträge gibt, neuestes zuerst. */
+    public List<Integer> getJahreMitEintraegen() {
+        return eintraege.stream()
+                .map(e -> e.getDatum().getYear())
+                .distinct()
+                .sorted(Comparator.reverseOrder())
+                .toList();
+    }
+
     /** Einträge sortiert: neuester Tag zuerst, innerhalb eines Tages nach ID. */
     public List<Eintrag> getEintraegeNachDatum() {
         return eintraege.stream()

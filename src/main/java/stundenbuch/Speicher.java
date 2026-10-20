@@ -58,6 +58,11 @@ public class Speicher {
         return ordner;
     }
 
+    /** Unterordner für gespeicherte Berichte (.docx, .csv), getrennt von den Daten. */
+    public Path getBerichtOrdner() {
+        return ordner.resolve("Berichte");
+    }
+
     // ---------- Speichern ----------
 
     public void speichern(Zeiterfassung z) throws IOException {

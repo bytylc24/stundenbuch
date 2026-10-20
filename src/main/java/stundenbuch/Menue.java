@@ -3,33 +3,27 @@ package stundenbuch;
 import java.io.Console;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Scanner;
 import java.util.function.Function;
 
 /**
  * Ein- und Ausgabe im Terminal. Rechnet nicht und schreibt keine Dateien selbst.
+ * Wie etwas aussieht (Rahmen, Farben, Tabellen), steht in Konsole.
  */
 public class Menue {
 
     // Erlaubt 05.10.2026 und 5.10.2026; STRICT lehnt Daten wie 31.02.2026 ab
     private static final DateTimeFormatter DATUM_FORMAT =
             DateTimeFormatter.ofPattern("d.M.uuuu").withResolverStyle(ResolverStyle.STRICT);
-
-    // Österreichisches Format: Komma als Dezimaltrennzeichen
-    private static final Locale DEUTSCH = Locale.forLanguageTag("de-AT");
-
-    // Anzeige: 05.10.2026 und mit Wochentag "Mo., 05.10.2026"
-    private static final DateTimeFormatter DATUM_ANZEIGE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-    private static final DateTimeFormatter TAG_ANZEIGE = DateTimeFormatter.ofPattern("EE, dd.MM.yyyy", DEUTSCH);
-    // Monat für die Auswertung, z. B. "Oktober 2026"
-    private static final DateTimeFormatter MONAT_ANZEIGE = DateTimeFormatter.ofPattern("MMMM yyyy", DEUTSCH);
 
     private final Scanner scanner;
     private final Speicher speicher;
@@ -48,7 +42,7 @@ public class Menue {
 
     public void start() {
         zeiterfassung = speicher.laden();
-        System.out.println("Deine Daten liegen in: " + speicher.getOrdner());
+        hinweis("Deine Daten liegen in: " + speicher.getOrdner());
 
         try {
             boolean weiter = true;
@@ -64,8 +58,9 @@ public class Menue {
                     case 6 -> mitarbeiterVerwalten();
                     case 7 -> projekteVerwalten();
                     case 8 -> hilfeAnzeigen();
+                    case 9 -> berichtErstellen();
                     case 0 -> weiter = false;
-                    default -> System.out.println("Bitte eine Zahl von 0 bis 8 eingeben.");
+                    default -> fehler("Bitte eine Zahl von 0 bis 9 eingeben.");
                 }
             }
         } catch (EingabeEnde ex) {
@@ -74,39 +69,59 @@ public class Menue {
         }
 
         speichern();
-        System.out.println("Gespeichert. Auf Wiedersehen!");
+        ok("Gespeichert. Auf Wiedersehen!");
     }
 
+    /**
+     * Hauptmenü nach Themen gruppiert. Die Nummern bleiben wie früher (Bericht kam als 9 dazu),
+     * damit sich niemand umgewöhnen muss.
+     */
     private void zeigeHauptmenue() {
         System.out.println();
-        System.out.println("===== STUNDENBUCH =====");
-        System.out.println("1) Eintrag erfassen");
-        System.out.println("2) Arbeitstage anzeigen");
-        System.out.println("3) Eintrag bearbeiten");
-        System.out.println("4) Eintrag löschen");
-        System.out.println("5) Auswertung (Stunden pro Projekt)");
-        System.out.println("6) Mitarbeiter verwalten");
-        System.out.println("7) Projekte verwalten");
-        System.out.println("8) Hilfe");
-        System.out.println("0) Speichern und beenden");
+        Konsole.titelBox("STUNDENBUCH", LocalDate.now().format(Format.TAG)).forEach(System.out::println);
+        YearMonth jetzt = YearMonth.now();
+        hinweis("  " + zeiterfassung.getMitarbeiter().size() + " Mitarbeiter · "
+                + zeiterfassung.getProjekte().size() + " Projekte · "
+                + zeiterfassung.getEintraege().size() + " Einträge · "
+                + jetzt.format(Format.MONAT) + ": " + Format.stunden(zeiterfassung.getStundenGesamt(jetzt)));
+        System.out.println();
+        System.out.println(Konsole.akzent("  ERFASSEN"));
+        menuepunkt(1, "Eintrag erfassen");
+        menuepunkt(2, "Arbeitstage anzeigen");
+        menuepunkt(3, "Eintrag bearbeiten");
+        menuepunkt(4, "Eintrag löschen");
+        System.out.println(Konsole.akzent("  AUSWERTEN"));
+        menuepunkt(5, "Auswertung (Stunden pro Projekt)");
+        menuepunkt(9, "Bericht ansehen und speichern (Word/CSV)");
+        System.out.println(Konsole.akzent("  VERWALTEN"));
+        menuepunkt(6, "Mitarbeiter verwalten");
+        menuepunkt(7, "Projekte verwalten");
+        menuepunkt(8, "Hilfe");
+        menuepunkt(0, "Speichern und beenden");
+        System.out.println();
+    }
+
+    private static void menuepunkt(int nr, String text) {
+        System.out.println("    " + Konsole.fett(nr + ")") + " " + text);
     }
 
     // ---------- Menüpunkte ----------
 
     private void eintragErfassen() {
+        titel("Eintrag erfassen");
         if (zeiterfassung.getMitarbeiter().isEmpty() || zeiterfassung.getProjekte().isEmpty()) {
-            System.out.println("Lege zuerst mindestens einen Mitarbeiter (6) und ein Projekt (7) an.");
+            fehler("Lege zuerst mindestens einen Mitarbeiter (6) und ein Projekt (7) an.");
             return;
         }
         LocalDate datum = leseDatum("Datum (TT.MM.JJJJ, leer = heute): ");
         Mitarbeiter m = waehle("Mitarbeiter", zeiterfassung.getMitarbeiter(), Mitarbeiter::getName);
         if (m == null) {
-            System.out.println("Abgebrochen.");
+            hinweis("Abgebrochen.");
             return;
         }
         Projekt p = waehle("Projekt", zeiterfassung.getProjekte(), Projekt::getName);
         if (p == null) {
-            System.out.println("Abgebrochen.");
+            hinweis("Abgebrochen.");
             return;
         }
         double stunden = leseStunden("Stunden: ");
@@ -114,15 +129,16 @@ public class Menue {
 
         Eintrag e = zeiterfassung.addEintrag(datum, m, p, stunden, beschreibung);
         speichern();
-        System.out.println("Gespeichert: Eintrag #" + e.getId() + " (" + e.getDatum().format(DATUM_ANZEIGE)
-                + ", " + m.getName() + ", " + p.getName() + ", " + formatStunden(stunden) + ")");
+        ok("Gespeichert: Eintrag #" + e.getId() + " (" + e.getDatum().format(Format.DATUM)
+                + ", " + m.getName() + ", " + p.getName() + ", " + Format.stunden(stunden) + ")");
     }
 
     /** Zeigt alle Einträge gruppiert nach Tag, neuester Tag zuerst, mit Tagessumme. */
     private void eintraegeAnzeigen() {
+        titel("Arbeitstage");
         List<Eintrag> liste = zeiterfassung.getEintraegeNachDatum();
         if (liste.isEmpty()) {
-            System.out.println("Noch keine Einträge.");
+            hinweis("Noch keine Einträge.");
             return;
         }
         // Spaltenbreiten nach dem längsten Namen richten
@@ -133,15 +149,21 @@ public class Menue {
         for (Eintrag e : liste) {
             if (!e.getDatum().equals(letzterTag)) {
                 letzterTag = e.getDatum();
+                String tag = letzterTag.format(Format.TAG);
+                String summe = "gesamt " + Format.stunden(zeiterfassung.getStundenAmTag(letzterTag));
                 System.out.println();
-                System.out.println(letzterTag.format(TAG_ANZEIGE) + "   (gesamt "
-                        + formatStunden(zeiterfassung.getStundenAmTag(letzterTag)) + ")");
-                System.out.println("-".repeat(60));
+                System.out.println("  " + Konsole.akzent(tag)
+                        + " ".repeat(Math.max(2, Konsole.BREITE - 2 - tag.length() - summe.length()))
+                        + Konsole.fett(summe));
+                System.out.println("  " + Konsole.grau("─".repeat(Konsole.BREITE - 2)));
             }
-            System.out.printf("  %-6s %-" + breiteM + "s  %-" + breiteP + "s  %8s%n",
-                    "[#" + e.getId() + "]", e.getMitarbeiter().getName(), e.getProjekt().getName(),
-                    formatStunden(e.getStunden()));
-            System.out.println("         " + e.getBeschreibung());
+            System.out.println("  " + Konsole.grau(Konsole.links("#" + e.getId(), 5)) + " "
+                    + Konsole.links(e.getMitarbeiter().getName(), breiteM) + "  "
+                    + Konsole.links(e.getProjekt().getName(), breiteP) + "  "
+                    + Konsole.rechts(Format.stunden(e.getStunden()), 8));
+            for (String zeile : Konsole.umbrechen(e.getBeschreibung(), Konsole.BREITE - 8)) {
+                System.out.println("        " + Konsole.grau(zeile));
+            }
         }
     }
 
@@ -164,7 +186,7 @@ public class Menue {
             if (e != null) {
                 return e;
             }
-            System.out.println("Es gibt keinen Eintrag #" + id + ".");
+            fehler("Es gibt keinen Eintrag #" + id + ".");
         }
     }
 
@@ -174,10 +196,12 @@ public class Menue {
         if (e == null) {
             return;
         }
-        System.out.println("Eintrag #" + e.getId() + " bearbeiten (leere Eingabe = alten Wert behalten)");
+        System.out.println();
+        System.out.println(Konsole.ueberschrift("Eintrag #" + e.getId() + " bearbeiten"));
+        hinweis("Leere Eingabe = alten Wert behalten");
 
         // Erst alles abfragen, dann auf einmal übernehmen: kein halb geänderter Eintrag
-        LocalDate datum = leseDatum("Datum (alt: " + e.getDatum().format(DATUM_ANZEIGE) + "): ", e.getDatum());
+        LocalDate datum = leseDatum("Datum (alt: " + e.getDatum().format(Format.DATUM) + "): ", e.getDatum());
 
         System.out.println("Mitarbeiter (alt: " + e.getMitarbeiter().getName() + ")");
         Mitarbeiter m = waehle("Mitarbeiter", zeiterfassung.getMitarbeiter(), Mitarbeiter::getName, "Behalten");
@@ -191,7 +215,7 @@ public class Menue {
             p = e.getProjekt();
         }
 
-        double stunden = leseStunden("Stunden (alt: " + String.format(DEUTSCH, "%.1f", e.getStunden()) + "): ",
+        double stunden = leseStunden("Stunden (alt: " + String.format(Format.DEUTSCH, "%.1f", e.getStunden()) + "): ",
                 e.getStunden());
         String beschreibung = leseText("Was wurde gemacht? (alt: " + e.getBeschreibung() + "): ",
                 e.getBeschreibung());
@@ -202,8 +226,8 @@ public class Menue {
         e.setStunden(stunden);
         e.setBeschreibung(beschreibung);
         speichern();
-        System.out.println("Gespeichert: Eintrag #" + e.getId() + " (" + datum.format(DATUM_ANZEIGE) + ", "
-                + m.getName() + ", " + p.getName() + ", " + formatStunden(stunden) + ", " + beschreibung + ")");
+        ok("Gespeichert: Eintrag #" + e.getId() + " (" + datum.format(Format.DATUM) + ", "
+                + m.getName() + ", " + p.getName() + ", " + Format.stunden(stunden) + ", " + beschreibung + ")");
     }
 
     private void eintragLoeschen() {
@@ -211,98 +235,252 @@ public class Menue {
         if (e == null) {
             return;
         }
-        String frage = "Eintrag #" + e.getId() + " (" + e.getDatum().format(DATUM_ANZEIGE) + ", "
+        String frage = "Eintrag #" + e.getId() + " (" + e.getDatum().format(Format.DATUM) + ", "
                 + e.getMitarbeiter().getName() + ") wirklich löschen?";
         if (!bestaetige(frage)) {
-            System.out.println("Nicht gelöscht.");
+            hinweis("Nicht gelöscht.");
             return;
         }
         zeiterfassung.loescheEintrag(e);
         speichern();
-        System.out.println("Eintrag #" + e.getId() + " gelöscht.");
+        ok("Eintrag #" + e.getId() + " gelöscht.");
     }
 
     /** Tabelle: Zeilen = Projekte, Spalten = Mitarbeiter, mit Gesamt und Summe. */
     private void auswertungAnzeigen() {
+        titel("Auswertung");
         List<Projekt> projekte = zeiterfassung.getProjekte();
         List<Mitarbeiter> mitarbeiter = zeiterfassung.getMitarbeiter();
         if (projekte.isEmpty() || mitarbeiter.isEmpty()) {
-            System.out.println("Lege zuerst mindestens einen Mitarbeiter (6) und ein Projekt (7) an.");
+            fehler("Lege zuerst mindestens einen Mitarbeiter (6) und ein Projekt (7) an.");
             return;
         }
 
         // 1) Zeitraum wählen: nur Monate mit Einträgen, neueste zuerst
         List<YearMonth> monate = zeiterfassung.getMonateMitEintraegen();
         System.out.println("Zeitraum wählen:");
-        System.out.println("  0) Gesamter Zeitraum");
+        System.out.println("  " + Konsole.fett("0)") + " Gesamter Zeitraum");
         for (int i = 0; i < monate.size(); i++) {
-            System.out.println("  " + (i + 1) + ") " + monate.get(i).format(MONAT_ANZEIGE));
+            System.out.println("  " + Konsole.fett((i + 1) + ")") + " " + monate.get(i).format(Format.MONAT));
         }
-        int nr;
-        while (true) {
-            nr = leseZahl("Nummer: ");
-            if (nr >= 0 && nr <= monate.size()) {
-                break;
-            }
-            System.out.println("Bitte eine Zahl von 0 bis " + monate.size() + " eingeben.");
-        }
+        int nr = leseZahl("Nummer: ", 0, monate.size());
         YearMonth monat = nr == 0 ? null : monate.get(nr - 1); // null = alle Monate
 
-        // 2) Spaltenbreiten: erste Spalte nach dem längsten Projektnamen,
-        //    Zahlenspalten alle gleich breit nach dem längsten Namen bzw. der längsten Zahl
-        int breiteProjekt = "Projekt".length();
-        for (Projekt p : projekte) {
-            breiteProjekt = Math.max(breiteProjekt, p.getName().length());
-        }
-        int breiteZahl = Math.max("Gesamt".length(), formatStunden(zeiterfassung.getStundenGesamt(monat)).length());
+        // 2) Tabelle bauen und zeichnen
+        Tabelle t = new Tabelle("Stunden pro Projekt").spalte("Projekt");
         for (Mitarbeiter m : mitarbeiter) {
-            breiteZahl = Math.max(breiteZahl, m.getName().length());
+            t.zahlenSpalte(m.getName());
         }
-        String formatProjekt = "%-" + breiteProjekt + "s";
-        String formatZahl = "  %" + breiteZahl + "s";
-        int gesamtBreite = breiteProjekt + (mitarbeiter.size() + 1) * (breiteZahl + 2);
-
-        // 3) Tabelle ausgeben
-        System.out.println();
-        System.out.println("Auswertung: " + (monat == null ? "Gesamter Zeitraum" : monat.format(MONAT_ANZEIGE)));
-
-        System.out.printf(formatProjekt, "Projekt");
-        for (Mitarbeiter m : mitarbeiter) {
-            System.out.printf(formatZahl, m.getName());
-        }
-        System.out.printf(formatZahl + "%n", "Gesamt");
-        System.out.println("-".repeat(gesamtBreite));
-
+        t.zahlenSpalte("Gesamt");
         for (Projekt p : projekte) {
-            System.out.printf(formatProjekt, p.getName());
+            List<String> zeile = new ArrayList<>(List.of(p.getName()));
             for (Mitarbeiter m : mitarbeiter) {
-                System.out.printf(formatZahl, formatStunden(zeiterfassung.getStunden(p, m, monat)));
+                zeile.add(Format.zahl(zeiterfassung.getStunden(p, m, monat)));
             }
-            System.out.printf(formatZahl + "%n", formatStunden(zeiterfassung.getStundenGesamt(p, monat)));
+            zeile.add(Format.zahl(zeiterfassung.getStundenGesamt(p, monat)));
+            t.zeile(zeile.toArray(String[]::new));
+        }
+        List<String> summe = new ArrayList<>(List.of("Summe"));
+        for (Mitarbeiter m : mitarbeiter) {
+            summe.add(Format.zahl(zeiterfassung.getStundenGesamt(m, monat)));
+        }
+        summe.add(Format.zahl(zeiterfassung.getStundenGesamt(monat)));
+        t.summe(summe.toArray(String[]::new));
+
+        System.out.println();
+        System.out.println(Konsole.ueberschrift("Auswertung: "
+                + (monat == null ? "Gesamter Zeitraum" : monat.format(Format.MONAT))));
+        hinweis("  Stunden pro Projekt und Mitarbeiter");
+        zeige(t);
+    }
+
+    // ---------- Bericht ----------
+
+    /** Bericht: Filter wählen, im Terminal ansehen und erst dann als Word oder CSV speichern. */
+    private void berichtErstellen() {
+        titel("Bericht");
+        if (zeiterfassung.getEintraege().isEmpty()) {
+            fehler("Noch keine Einträge. Erfasse zuerst Stunden (1).");
+            return;
+        }
+        while (true) {
+            Bericht b = berichtFilterWaehlen();
+            if (b == null) {
+                hinweis("Abgebrochen.");
+                return;
+            }
+            berichtAnzeigen(b);
+
+            // Ansehen, dann entscheiden: speichern, Filter ändern oder zurück
+            boolean filterAendern = false;
+            while (!filterAendern) {
+                System.out.println();
+                if (b.istLeer()) {
+                    System.out.println(Konsole.fett("1)") + " Filter ändern   " + Konsole.fett("0)") + " Zurück");
+                    if (leseZahl("Auswahl: ", 0, 1) == 0) {
+                        return;
+                    }
+                    filterAendern = true;
+                    continue;
+                }
+                System.out.println(Konsole.fett("1)") + " Als Word speichern (.docx)   "
+                        + Konsole.fett("2)") + " Als CSV speichern (Excel)   " + Konsole.fett("3)") + " Beides");
+                System.out.println(Konsole.fett("4)") + " Filter ändern   " + Konsole.fett("0)") + " Zurück");
+                switch (leseZahl("Auswahl: ", 0, 4)) {
+                    case 1 -> oeffnenAnbieten(berichtSpeichern(b, ".docx"), false);
+                    case 2 -> oeffnenAnbieten(berichtSpeichern(b, ".csv"), false);
+                    case 3 -> {
+                        Path docx = berichtSpeichern(b, ".docx");
+                        Path csv = berichtSpeichern(b, ".csv");
+                        if (docx != null || csv != null) {
+                            oeffnenAnbieten(speicher.getBerichtOrdner(), true);
+                        }
+                    }
+                    case 4 -> filterAendern = true;
+                    case 0 -> {
+                        return;
+                    }
+                    default -> { /* leseZahl lässt nur 0 bis 4 zu */ }
+                }
+            }
+        }
+    }
+
+    /** Fragt Zeitraum, Projekt und Mitarbeiter ab. Gibt null zurück, wenn abgebrochen wurde. */
+    private Bericht berichtFilterWaehlen() {
+        System.out.println();
+        System.out.println(Konsole.ueberschrift("Filter"));
+        System.out.println("Zeitraum wählen:");
+        System.out.println("  " + Konsole.fett("1)") + " Gesamter Zeitraum");
+        System.out.println("  " + Konsole.fett("2)") + " Ein Jahr");
+        System.out.println("  " + Konsole.fett("3)") + " Ein Monat");
+        System.out.println("  " + Konsole.fett("4)") + " Eigener Zeitraum (von - bis)");
+        System.out.println("  " + Konsole.fett("0)") + " Abbrechen");
+
+        Bericht.Zeitraum zeitraum;
+        switch (leseZahl("Nummer: ", 0, 4)) {
+            case 1 -> zeitraum = Bericht.Zeitraum.gesamt();
+            case 2 -> {
+                Integer jahr = waehle("Jahr", zeiterfassung.getJahreMitEintraegen(), String::valueOf);
+                if (jahr == null) {
+                    return null;
+                }
+                zeitraum = Bericht.Zeitraum.jahr(jahr);
+            }
+            case 3 -> {
+                YearMonth monat = waehle("Monat", zeiterfassung.getMonateMitEintraegen(),
+                        m -> m.format(Format.MONAT));
+                if (monat == null) {
+                    return null;
+                }
+                zeitraum = Bericht.Zeitraum.monat(monat);
+            }
+            case 4 -> {
+                LocalDate von = leseDatum("Von (TT.MM.JJJJ, leer = heute): ");
+                LocalDate bis;
+                while (true) {
+                    bis = leseDatum("Bis (TT.MM.JJJJ, leer = heute): ");
+                    if (!bis.isBefore(von)) {
+                        break;
+                    }
+                    fehler("Das Ende darf nicht vor dem Anfang (" + von.format(Format.DATUM) + ") liegen.");
+                }
+                zeitraum = Bericht.Zeitraum.vonBis(von, bis);
+            }
+            default -> {
+                return null;
+            }
         }
 
-        System.out.println("=".repeat(gesamtBreite));
-        System.out.printf(formatProjekt, "Summe");
-        for (Mitarbeiter m : mitarbeiter) {
-            System.out.printf(formatZahl, formatStunden(zeiterfassung.getStundenGesamt(m, monat)));
-        }
-        System.out.printf(formatZahl + "%n", formatStunden(zeiterfassung.getStundenGesamt(monat)));
+        // 0 heißt hier nicht "abbrechen", sondern "kein Filter"
+        Projekt p = waehle("Projekt", zeiterfassung.getProjekte(), Projekt::getName, "Alle Projekte");
+        Mitarbeiter m = waehle("Mitarbeiter", zeiterfassung.getMitarbeiter(), Mitarbeiter::getName, "Alle Mitarbeiter");
+        return new Bericht(zeiterfassung, zeitraum, p, m);
     }
+
+    /** Vorschau im Terminal, aufgebaut wie die Word-Datei. */
+    private void berichtAnzeigen(Bericht b) {
+        System.out.println();
+        Konsole.titelBox(b.getTitel().toUpperCase(Format.DEUTSCH), "Vorschau").forEach(System.out::println);
+        for (String[] a : b.getAngaben()) {
+            System.out.println("  " + Konsole.grau(Konsole.links(a[0], 13)) + a[1]);
+        }
+        if (b.istLeer()) {
+            System.out.println();
+            fehler("Keine Einträge für diese Auswahl.");
+            return;
+        }
+        System.out.println();
+        Konsole.kacheln(b.getKennzahlen()).forEach(z -> System.out.println("  " + z));
+        for (Tabelle t : b.getTabellen()) {
+            System.out.println();
+            System.out.println("  " + Konsole.akzent(t.getTitel()));
+            zeige(t);
+        }
+        System.out.println();
+        hinweis("Dateiname: " + b.getDateiname() + ".docx / .csv");
+    }
+
+    /**
+     * Speichert den Bericht im Ordner Berichte. Gibt es die Datei schon, wird gefragt;
+     * bei "n" bekommt die neue Datei eine Nummer (_2, _3, ...). Gibt null zurück bei einem Fehler.
+     */
+    private Path berichtSpeichern(Bericht b, String endung) {
+        Path ordner = speicher.getBerichtOrdner();
+        Path datei = ordner.resolve(b.getDateiname() + endung);
+        if (Files.exists(datei) && !bestaetige("Die Datei " + datei.getFileName() + " gibt es schon. Überschreiben?")) {
+            for (int nr = 2; Files.exists(datei); nr++) {
+                datei = ordner.resolve(b.getDateiname() + "_" + nr + endung);
+            }
+        }
+        try {
+            Files.createDirectories(ordner);
+            if (endung.equals(".docx")) {
+                BerichtExport.alsDocx(b, datei);
+            } else {
+                BerichtExport.alsCsv(b, datei);
+            }
+            ok("Gespeichert: " + datei);
+            return datei;
+        } catch (IOException ex) {
+            fehler("Speichern fehlgeschlagen: " + ex.getMessage());
+            hinweis("Ist die Datei gerade in Word oder Excel offen? Dann dort schließen und nochmal speichern.");
+            return null;
+        }
+    }
+
+    /** Bietet an, die Datei (oder den Ordner) gleich zu öffnen. Geht nur unter Windows. */
+    private void oeffnenAnbieten(Path pfad, boolean istOrdner) {
+        if (pfad == null || !System.getProperty("os.name", "").startsWith("Windows")) {
+            return;
+        }
+        if (!bestaetige(istOrdner ? "Ordner jetzt öffnen?" : "Datei jetzt öffnen?")) {
+            return;
+        }
+        try {
+            // Der Explorer öffnet eine Datei mit dem passenden Programm (Word, Excel)
+            new ProcessBuilder("explorer.exe", pfad.toString()).start();
+        } catch (IOException ex) {
+            fehler("Konnte nicht geöffnet werden: " + ex.getMessage());
+        }
+    }
+
+    // ---------- Verwalten ----------
 
     private void mitarbeiterVerwalten() {
         while (true) {
-            System.out.println();
-            System.out.println("--- Mitarbeiter ---");
+            titel("Mitarbeiter");
             List<Mitarbeiter> liste = zeiterfassung.getMitarbeiter();
             if (liste.isEmpty()) {
-                System.out.println("  (noch keine)");
+                hinweis("  (noch keine)");
+            } else {
+                Tabelle t = new Tabelle("Mitarbeiter").spalte("Kennung").spalte("Name").zahlenSpalte("Stunden");
+                for (Mitarbeiter m : liste) {
+                    t.zeile(m.getKennung(), m.getName(), Format.zahl(zeiterfassung.getStundenGesamt(m, null)));
+                }
+                zeige(t);
             }
-            int breite = liste.stream().mapToInt(m -> m.getName().length()).max().orElse(0);
-            for (Mitarbeiter m : liste) {
-                System.out.printf("  %s  %-" + breite + "s  %8s%n", m.getKennung(),
-                        m.getName(), formatStunden(zeiterfassung.getStundenGesamt(m, null)));
-            }
-            System.out.println("1) Hinzufügen   2) Umbenennen   3) Löschen   0) Zurück");
+            untermenue();
 
             switch (leseZahl("Auswahl: ")) {
                 case 1 -> mitarbeiterHinzufuegen();
@@ -311,7 +489,7 @@ public class Menue {
                 case 0 -> {
                     return;
                 }
-                default -> System.out.println("Bitte eine Zahl von 0 bis 3 eingeben.");
+                default -> fehler("Bitte eine Zahl von 0 bis 3 eingeben.");
             }
         }
     }
@@ -320,11 +498,11 @@ public class Menue {
         String name = leseText("Name: ");
         Mitarbeiter m = zeiterfassung.addMitarbeiter(name);
         if (m == null) {
-            System.out.println("Den Namen " + name + " gibt es schon.");
+            fehler("Den Namen " + name + " gibt es schon.");
             return;
         }
         speichern();
-        System.out.println("Angelegt: " + name + " (" + m.getKennung() + ")");
+        ok("Angelegt: " + name + " (" + m.getKennung() + ")");
     }
 
     private void mitarbeiterUmbenennen() {
@@ -335,12 +513,12 @@ public class Menue {
         String neu = leseText("Neuer Name (alt: " + m.getName() + "): ", m.getName());
         // Nur die Schreibweise des eigenen Namens zu ändern ist erlaubt
         if (!neu.equalsIgnoreCase(m.getName()) && zeiterfassung.istMitarbeiterNameVergeben(neu)) {
-            System.out.println("Den Namen " + neu + " gibt es schon.");
+            fehler("Den Namen " + neu + " gibt es schon.");
             return;
         }
         m.setName(neu);
         speichern();
-        System.out.println("Umbenannt in: " + neu);
+        ok("Umbenannt in: " + neu);
     }
 
     private void mitarbeiterLoeschen() {
@@ -349,31 +527,31 @@ public class Menue {
             return;
         }
         if (!bestaetige("Mitarbeiter " + m.getName() + " wirklich löschen?")) {
-            System.out.println("Nicht gelöscht.");
+            hinweis("Nicht gelöscht.");
             return;
         }
         if (!zeiterfassung.loescheMitarbeiter(m)) {
-            System.out.println("Geht nicht: " + m.getName() + " hat noch Einträge. Lösche diese zuerst.");
+            fehler("Geht nicht: " + m.getName() + " hat noch Einträge. Lösche diese zuerst.");
             return;
         }
         speichern();
-        System.out.println("Gelöscht: " + m.getName());
+        ok("Gelöscht: " + m.getName());
     }
 
     private void projekteVerwalten() {
         while (true) {
-            System.out.println();
-            System.out.println("--- Projekte ---");
+            titel("Projekte");
             List<Projekt> liste = zeiterfassung.getProjekte();
             if (liste.isEmpty()) {
-                System.out.println("  (noch keine)");
+                hinweis("  (noch keine)");
+            } else {
+                Tabelle t = new Tabelle("Projekte").spalte("Ort").spalte("Kunde").zahlenSpalte("Stunden");
+                for (Projekt p : liste) {
+                    t.zeile(p.getOrt(), p.getKunde(), Format.zahl(zeiterfassung.getStundenGesamt(p, null)));
+                }
+                zeige(t);
             }
-            int breite = liste.stream().mapToInt(p -> p.getName().length()).max().orElse(0);
-            for (Projekt p : liste) {
-                System.out.printf("  %-" + breite + "s  %8s%n",
-                        p.getName(), formatStunden(zeiterfassung.getStundenGesamt(p, null)));
-            }
-            System.out.println("1) Hinzufügen   2) Umbenennen   3) Löschen   0) Zurück");
+            untermenue();
 
             switch (leseZahl("Auswahl: ")) {
                 case 1 -> projektHinzufuegen();
@@ -382,7 +560,7 @@ public class Menue {
                 case 0 -> {
                     return;
                 }
-                default -> System.out.println("Bitte eine Zahl von 0 bis 3 eingeben.");
+                default -> fehler("Bitte eine Zahl von 0 bis 3 eingeben.");
             }
         }
     }
@@ -392,11 +570,11 @@ public class Menue {
         String kunde = leseText("Kunde: ");
         Projekt p = zeiterfassung.addProjekt(ort, kunde);
         if (p == null) {
-            System.out.println("Das Projekt " + ort + "/" + kunde + " gibt es schon.");
+            fehler("Das Projekt " + ort + "/" + kunde + " gibt es schon.");
             return;
         }
         speichern();
-        System.out.println("Angelegt: " + p.getName());
+        ok("Angelegt: " + p.getName());
     }
 
     private void projektUmbenennen() {
@@ -408,13 +586,13 @@ public class Menue {
         String kunde = leseText("Kunde (alt: " + p.getKunde() + "): ", p.getKunde());
         String neuerName = ort + "/" + kunde;
         if (!neuerName.equalsIgnoreCase(p.getName()) && zeiterfassung.istProjektNameVergeben(ort, kunde)) {
-            System.out.println("Das Projekt " + neuerName + " gibt es schon.");
+            fehler("Das Projekt " + neuerName + " gibt es schon.");
             return;
         }
         p.setOrt(ort);
         p.setKunde(kunde);
         speichern();
-        System.out.println("Umbenannt in: " + p.getName());
+        ok("Umbenannt in: " + p.getName());
     }
 
     private void projektLoeschen() {
@@ -423,22 +601,26 @@ public class Menue {
             return;
         }
         if (!bestaetige("Projekt " + p.getName() + " wirklich löschen?")) {
-            System.out.println("Nicht gelöscht.");
+            hinweis("Nicht gelöscht.");
             return;
         }
         if (!zeiterfassung.loescheProjekt(p)) {
-            System.out.println("Geht nicht: " + p.getName() + " hat noch Einträge. Lösche diese zuerst.");
+            fehler("Geht nicht: " + p.getName() + " hat noch Einträge. Lösche diese zuerst.");
             return;
         }
         speichern();
-        System.out.println("Gelöscht: " + p.getName());
+        ok("Gelöscht: " + p.getName());
+    }
+
+    private static void untermenue() {
+        System.out.println(Konsole.fett("1)") + " Hinzufügen   " + Konsole.fett("2)") + " Umbenennen   "
+                + Konsole.fett("3)") + " Löschen   " + Konsole.fett("0)") + " Zurück");
     }
 
     /** Erklärt das ganze Programm: Menüpunkte, Regeln und wo die Daten liegen. */
     private void hilfeAnzeigen() {
+        titel("Hilfe");
         System.out.println("""
-
-                ===== HILFE =====
                 Das Stundenbuch erfasst, wer wann an welchem Projekt wie viele Stunden
                 gearbeitet hat und was gemacht wurde. Die Stunden werden pro Projekt und
                 pro Mitarbeiter zusammengezählt.
@@ -463,6 +645,12 @@ public class Menue {
                   5) Auswertung
                      Tabelle Projekte x Mitarbeiter mit Gesamt und Summe.
                      Wähle den gesamten Zeitraum oder einen einzelnen Monat.
+                  9) Bericht ansehen und speichern
+                     Filter wählen: Zeitraum (alles, Jahr, Monat oder von - bis),
+                     Projekt und Mitarbeiter (0 = alle). Der Bericht erscheint zuerst
+                     hier im Terminal. Gefällt er dir, speichere ihn als Word (.docx)
+                     oder CSV (für Excel), im selben Aufbau. Der Dateiname kommt aus
+                     dem Filter, z. B. oeblarn_2026_tanja.docx.
                   6) Mitarbeiter verwalten / 7) Projekte verwalten
                      Hinzufügen, umbenennen, löschen. Ein neuer Name gilt auch
                      für alle alten Einträge. Jeder Mitarbeiter bekommt eine
@@ -473,18 +661,38 @@ public class Menue {
                   - Doppelte Namen sind nicht erlaubt (Groß-/Kleinschreibung egal).
                   - Wer noch Einträge hat, kann nicht gelöscht werden.
                     Lösche zuerst die Einträge.
-                  - In Listen bedeutet 0 immer: abbrechen bzw. behalten.
+                  - In Listen bedeutet 0 abbrechen bzw. behalten
+                    (beim Bericht: alle Projekte bzw. alle Mitarbeiter).
                   - Jede Änderung wird sofort gespeichert.
                 """);
         System.out.println("Deine Daten liegen in: " + speicher.getOrdner());
         System.out.println("(mitarbeiter.csv, projekte.csv, eintraege.csv)");
+        System.out.println("Gespeicherte Berichte liegen in: " + speicher.getBerichtOrdner());
     }
 
-    // ---------- Formatieren ----------
+    // ---------- Ausgabe ----------
 
-    /** Stunden mit Komma und einer Nachkommastelle, z. B. "4,5 h". */
-    private static String formatStunden(double stunden) {
-        return String.format(DEUTSCH, "%.1f h", stunden);
+    /** Überschrift eines Menüpunkts mit Leerzeile davor. */
+    private static void titel(String text) {
+        System.out.println();
+        System.out.println(Konsole.ueberschrift(text));
+    }
+
+    /** Tabelle eingerückt ausgeben. */
+    private static void zeige(Tabelle t) {
+        Konsole.tabelle(t).forEach(z -> System.out.println("  " + z));
+    }
+
+    private static void ok(String text) {
+        System.out.println(Konsole.gruen(text));
+    }
+
+    private static void fehler(String text) {
+        System.out.println(Konsole.rot(text));
+    }
+
+    private static void hinweis(String text) {
+        System.out.println(Konsole.grau(text));
     }
 
     // ---------- Speichern ----------
@@ -494,7 +702,7 @@ public class Menue {
         try {
             speicher.speichern(zeiterfassung);
         } catch (IOException ex) {
-            System.out.println("WARNUNG: Speichern fehlgeschlagen: " + ex.getMessage());
+            fehler("WARNUNG: Speichern fehlgeschlagen: " + ex.getMessage());
         }
     }
 
@@ -517,8 +725,19 @@ public class Menue {
             try {
                 return Integer.parseInt(eingabe);
             } catch (NumberFormatException ex) {
-                System.out.println("Bitte eine ganze Zahl eingeben.");
+                fehler("Bitte eine ganze Zahl eingeben.");
             }
+        }
+    }
+
+    /** Fragt eine Zahl von min bis max ab. */
+    private int leseZahl(String text, int min, int max) {
+        while (true) {
+            int nr = leseZahl(text);
+            if (nr >= min && nr <= max) {
+                return nr;
+            }
+            fehler("Bitte eine Zahl von " + min + " bis " + max + " eingeben.");
         }
     }
 
@@ -537,7 +756,7 @@ public class Menue {
             if (standard != null) {
                 return standard;
             }
-            System.out.println("Die Eingabe darf nicht leer sein.");
+            fehler("Die Eingabe darf nicht leer sein.");
         }
     }
 
@@ -559,9 +778,9 @@ public class Menue {
                 if (stunden > 0 && stunden <= 24) {
                     return stunden;
                 }
-                System.out.println("Die Stunden müssen größer als 0 und höchstens 24 sein.");
+                fehler("Die Stunden müssen größer als 0 und höchstens 24 sein.");
             } catch (NumberFormatException ex) {
-                System.out.println("Bitte eine Zahl eingeben, z. B. 4,5");
+                fehler("Bitte eine Zahl eingeben, z. B. 4,5");
             }
         }
     }
@@ -581,7 +800,7 @@ public class Menue {
             try {
                 return LocalDate.parse(eingabe, DATUM_FORMAT);
             } catch (DateTimeParseException ex) {
-                System.out.println("Ungültiges Datum. Bitte im Format TT.MM.JJJJ eingeben, z. B. 05.10.2026");
+                fehler("Ungültiges Datum. Bitte im Format TT.MM.JJJJ eingeben, z. B. 05.10.2026");
             }
         }
     }
@@ -596,7 +815,7 @@ public class Menue {
             if (eingabe.equals("n")) {
                 return false;
             }
-            System.out.println("Bitte j oder n eingeben.");
+            fehler("Bitte j oder n eingeben.");
         }
     }
 
@@ -611,23 +830,15 @@ public class Menue {
     /** Wie oben, aber mit eigenem Text für 0, z. B. "Behalten" beim Bearbeiten. */
     private <T> T waehle(String was, List<T> liste, Function<T, String> anzeige, String textFuerNull) {
         if (liste.isEmpty()) {
-            System.out.println("Keine " + was + " vorhanden.");
+            hinweis("Keine " + was + " vorhanden.");
             return null;
         }
         System.out.println(was + " wählen:");
         for (int i = 0; i < liste.size(); i++) {
-            System.out.println("  " + (i + 1) + ") " + anzeige.apply(liste.get(i)));
+            System.out.println("  " + Konsole.fett((i + 1) + ")") + " " + anzeige.apply(liste.get(i)));
         }
-        System.out.println("  0) " + textFuerNull);
-        while (true) {
-            int nr = leseZahl("Nummer: ");
-            if (nr == 0) {
-                return null;
-            }
-            if (nr >= 1 && nr <= liste.size()) {
-                return liste.get(nr - 1);
-            }
-            System.out.println("Bitte eine Zahl von 0 bis " + liste.size() + " eingeben.");
-        }
+        System.out.println("  " + Konsole.fett("0)") + " " + textFuerNull);
+        int nr = leseZahl("Nummer: ", 0, liste.size());
+        return nr == 0 ? null : liste.get(nr - 1);
     }
 }

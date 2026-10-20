@@ -40,6 +40,22 @@ Dort liegen drei CSV-Dateien (Trennzeichen `;`, UTF-8):
 Jeder Mitarbeiter hat eine feste Kennung: `AB_01` = Arbeiter 1, `AB_02` = Arbeiter 2 usw.
 Jede Änderung wird sofort gespeichert.
 
+## Berichte (Word und CSV)
+
+Menüpunkt `9) Bericht ansehen und speichern`:
+
+1. Filter wählen: Zeitraum (alles, ein Jahr, ein Monat oder von bis), Projekt und Mitarbeiter (0 = alle).
+2. Der Bericht erscheint zuerst im Terminal (Vorschau).
+3. Gefällt er, als Word (`.docx`), CSV (für Excel) oder beides speichern. Die Datei hat denselben Aufbau wie die Vorschau.
+
+Die Dateien landen in `Stundenbuch-Daten\Berichte`. Der Name kommt aus dem Filter:
+Projekt (Ort), Zeitraum, Mitarbeiter, z. B. `oeblarn_2026_tanja.docx`, `graz_huber_2026_10.csv`
+(gibt es den Ort mehrmals, kommt der Kunde dazu) oder `stundenbericht_gesamt.docx` ohne Filter.
+Gibt es die Datei schon, fragt das Programm, ob sie überschrieben werden soll; sonst bekommt sie eine Nummer (`_2`).
+
+Farben im Terminal gibt es nur im Windows Terminal und in VS Code, in der alten Konsole bleibt der Text ohne Farbe.
+Mit der Umgebungsvariable `NO_COLOR` lassen sie sich abschalten.
+
 ## .exe erstellen
 
 Doppelklick auf `build-exe.bat` (nur unter Windows). Das Skript erzeugt:
@@ -76,6 +92,11 @@ Get-Content testeingaben\schritt10.txt | java "-Duser.home=testdaten" -jar targe
 | `Mitarbeiter` | Datenklasse: id, name |
 | `Projekt` | Datenklasse: id, ort, kunde |
 | `Eintrag` | Datenklasse: id, datum, mitarbeiter, projekt, stunden, beschreibung |
+| `Bericht` | filtert Einträge (Zeitraum, Projekt, Mitarbeiter), rechnet Summen, baut Tabellen und den Dateinamen |
+| `Tabelle` | nur Daten: Spalten und Zeilen. Terminal, Word und CSV zeichnen dieselbe Tabelle |
+| `BerichtExport` | schreibt den Bericht als `.docx` (ZIP mit XML, ohne Bibliothek) oder `.csv` |
+| `Konsole` | Aussehen im Terminal: Rahmen, Farben, Tabellen |
+| `Format` | gemeinsame Formate: Datum, Monat, Stunden mit Komma |
 
 ## Weiterarbeiten (Notizen für später)
 
@@ -86,7 +107,7 @@ Get-Content testeingaben\schritt10.txt | java "-Duser.home=testdaten" -jar targe
 | Projekt (Code) | `Desktop\Stundenerfassung_v01` |
 | Fertige App zum Weitergeben | `dist\Stundenbuch.zip` (entsteht durch `build-exe.bat`) |
 | Bauplan, nach dem die App entstanden ist | `STUNDENBUCH_SPEC.md` |
-| Testeingaben für die Probeläufe | `testeingaben\schritt1.txt` bis `schritt10b.txt` |
+| Testeingaben für die Probeläufe | `testeingaben\schritt1.txt` bis `schritt10b.txt`, `schritt12.txt` (Bericht) |
 
 Ist der Ordner weg oder du arbeitest an einem anderen PC: `git clone https://github.com/bytylc24/stundenbuch.git`
 
@@ -104,6 +125,9 @@ Ist der Ordner weg oder du arbeitest an einem anderen PC: `git clone https://git
 | Ich will ... | Datei |
 |---|---|
 | Menütexte, neue Menüpunkte, Eingaben, Anzeige, Hilfetext | `Menue.java` |
+| Aussehen im Terminal (Rahmen, Farben) | `Konsole.java` |
+| Inhalt des Berichts, Dateiname | `Bericht.java` |
+| Aussehen der Word-Datei (Farben, Schrift) oder der CSV | `BerichtExport.java` |
 | neue Berechnungen oder Regeln (z. B. Summen, Löschschutz) | `Zeiterfassung.java` |
 | Speicherort, CSV-Format, Kopfzeile | `Speicher.java` |
 | neue Felder (z. B. Telefonnummer beim Mitarbeiter) | Datenklasse **und** `Speicher.java` (Schreiben und Laden) **und** `Menue.java` (Eingabe) |
