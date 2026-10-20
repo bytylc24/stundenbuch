@@ -117,7 +117,7 @@ public class Menue {
     }
 
     private static void menuepunkt(int nr, String text) {
-        System.out.println("    " + Konsole.fett(nr + ")") + " " + text);
+        System.out.println("    " + Konsole.taste(nr + ")") + " " + text);
     }
 
     // ---------- Menüpunkte ----------
@@ -131,12 +131,12 @@ public class Menue {
         LocalDate datum = leseDatum("Datum (TT.MM.JJJJ, leer = heute): ");
         Mitarbeiter m = waehle("Mitarbeiter", zeiterfassung.getMitarbeiter(), Mitarbeiter::getName);
         if (m == null) {
-            hinweis("Abgebrochen.");
+            abbruch("Abgebrochen.");
             return;
         }
         Projekt p = waehle("Projekt", zeiterfassung.getProjekte(), Projekt::getName);
         if (p == null) {
-            hinweis("Abgebrochen.");
+            abbruch("Abgebrochen.");
             return;
         }
         double stunden = leseStunden("Stunden: ");
@@ -177,7 +177,7 @@ public class Menue {
                     + Konsole.links(e.getProjekt().getName(), breiteP) + "  "
                     + Konsole.rechts(Format.stunden(e.getStunden()), 8));
             for (String zeile : Konsole.umbrechen(e.getBeschreibung(), Konsole.BREITE - 8)) {
-                System.out.println("        " + Konsole.grau(zeile));
+                System.out.println("        " + zeile);
             }
         }
     }
@@ -253,7 +253,7 @@ public class Menue {
         String frage = "Eintrag #" + e.getId() + " (" + e.getDatum().format(Format.DATUM) + ", "
                 + e.getMitarbeiter().getName() + ") wirklich löschen?";
         if (!bestaetige(frage)) {
-            hinweis("Nicht gelöscht.");
+            abbruch("Nicht gelöscht.");
             return;
         }
         zeiterfassung.loescheEintrag(e);
@@ -274,9 +274,9 @@ public class Menue {
         // 1) Zeitraum wählen: nur Monate mit Einträgen, neueste zuerst
         List<YearMonth> monate = zeiterfassung.getMonateMitEintraegen();
         System.out.println("Zeitraum wählen:");
-        System.out.println("  " + Konsole.fett("0)") + " Gesamter Zeitraum");
+        System.out.println("  " + Konsole.taste("0)") + " Gesamter Zeitraum");
         for (int i = 0; i < monate.size(); i++) {
-            System.out.println("  " + Konsole.fett((i + 1) + ")") + " " + monate.get(i).format(Format.MONAT));
+            System.out.println("  " + Konsole.taste((i + 1) + ")") + " " + monate.get(i).format(Format.MONAT));
         }
         int nr = leseZahl("Nummer: ", 0, monate.size());
         YearMonth monat = nr == 0 ? null : monate.get(nr - 1); // null = alle Monate
@@ -319,7 +319,7 @@ public class Menue {
         while (true) {
             Bericht b = berichtFilterWaehlen();
             if (b == null) {
-                hinweis("Abgebrochen.");
+                abbruch("Abgebrochen.");
                 return;
             }
             berichtAnzeigen(b);
@@ -329,16 +329,16 @@ public class Menue {
             while (!filterAendern) {
                 System.out.println();
                 if (b.istLeer()) {
-                    System.out.println(Konsole.fett("1)") + " Filter ändern   " + Konsole.fett("0)") + " Zurück");
+                    System.out.println(Konsole.taste("1)") + " Filter ändern   " + Konsole.taste("0)") + " Zurück");
                     if (leseZahl("Auswahl: ", 0, 1) == 0) {
                         return;
                     }
                     filterAendern = true;
                     continue;
                 }
-                System.out.println(Konsole.fett("1)") + " Als Word speichern (.docx)   "
-                        + Konsole.fett("2)") + " Als CSV speichern (Excel)   " + Konsole.fett("3)") + " Beides");
-                System.out.println(Konsole.fett("4)") + " Filter ändern   " + Konsole.fett("0)") + " Zurück");
+                System.out.println(Konsole.taste("1)") + " Als Word speichern (.docx)   "
+                        + Konsole.taste("2)") + " Als CSV speichern (Excel)   " + Konsole.taste("3)") + " Beides");
+                System.out.println(Konsole.taste("4)") + " Filter ändern   " + Konsole.taste("0)") + " Zurück");
                 switch (leseZahl("Auswahl: ", 0, 4)) {
                     case 1 -> oeffnenAnbieten(berichtSpeichern(b, ".docx"), false);
                     case 2 -> oeffnenAnbieten(berichtSpeichern(b, ".csv"), false);
@@ -363,11 +363,11 @@ public class Menue {
     private Bericht berichtFilterWaehlen() {
         titel("Bericht: Filter");
         System.out.println("Zeitraum wählen:");
-        System.out.println("  " + Konsole.fett("1)") + " Gesamter Zeitraum");
-        System.out.println("  " + Konsole.fett("2)") + " Ein Jahr");
-        System.out.println("  " + Konsole.fett("3)") + " Ein Monat");
-        System.out.println("  " + Konsole.fett("4)") + " Eigener Zeitraum (von - bis)");
-        System.out.println("  " + Konsole.fett("0)") + " Abbrechen");
+        System.out.println("  " + Konsole.taste("1)") + " Gesamter Zeitraum");
+        System.out.println("  " + Konsole.taste("2)") + " Ein Jahr");
+        System.out.println("  " + Konsole.taste("3)") + " Ein Monat");
+        System.out.println("  " + Konsole.taste("4)") + " Eigener Zeitraum (von - bis)");
+        System.out.println("  " + Konsole.taste("0)") + " Abbrechen");
 
         Bericht.Zeitraum zeitraum;
         switch (leseZahl("Nummer: ", 0, 4)) {
@@ -541,7 +541,7 @@ public class Menue {
             return;
         }
         if (!bestaetige("Mitarbeiter " + m.getName() + " wirklich löschen?")) {
-            hinweis("Nicht gelöscht.");
+            abbruch("Nicht gelöscht.");
             return;
         }
         if (!zeiterfassung.loescheMitarbeiter(m)) {
@@ -616,7 +616,7 @@ public class Menue {
             return;
         }
         if (!bestaetige("Projekt " + p.getName() + " wirklich löschen?")) {
-            hinweis("Nicht gelöscht.");
+            abbruch("Nicht gelöscht.");
             return;
         }
         if (!zeiterfassung.loescheProjekt(p)) {
@@ -628,8 +628,8 @@ public class Menue {
     }
 
     private static void untermenue() {
-        System.out.println(Konsole.fett("1)") + " Hinzufügen   " + Konsole.fett("2)") + " Umbenennen   "
-                + Konsole.fett("3)") + " Löschen   " + Konsole.fett("0)") + " Zurück");
+        System.out.println(Konsole.taste("1)") + " Hinzufügen   " + Konsole.taste("2)") + " Umbenennen   "
+                + Konsole.taste("3)") + " Löschen   " + Konsole.taste("0)") + " Zurück");
     }
 
     /** Erklärt das ganze Programm: Menüpunkte, Regeln und wo die Daten liegen. */
@@ -679,6 +679,13 @@ public class Menue {
                   - In Listen bedeutet 0 abbrechen bzw. behalten
                     (beim Bericht: alle Projekte bzw. alle Mitarbeiter).
                   - Jede Änderung wird sofort gespeichert.
+
+                FARBEN
+                  grün = erledigt (gespeichert, angelegt, gelöscht)
+                  rot  = Fehler, geht nicht, falsche Eingabe
+                  gelb = Frage (j/n) oder abgebrochen, es ist nichts passiert
+                  cyan = Überschriften und Menünummern
+                  grau = Hinweise
                 """);
         System.out.println("Deine Daten liegen in: " + speicher.getOrdner());
         System.out.println("(mitarbeiter.csv, projekte.csv, eintraege.csv)");
@@ -725,6 +732,11 @@ public class Menue {
 
     private void hinweis(String text) {
         melde(Konsole.grau(text));
+    }
+
+    /** Abgebrochen bzw. nicht ausgeführt: Es ist nichts passiert. */
+    private void abbruch(String text) {
+        melde(Konsole.gelb(text));
     }
 
     /** Sofort ausgeben und merken, damit der nächste Bildschirm sie noch zeigt (nur im echten Fenster). */
@@ -849,7 +861,7 @@ public class Menue {
     /** Fragt j oder n ab. */
     private boolean bestaetige(String frage) {
         while (true) {
-            String eingabe = leseZeile(frage + " (j/n) ").toLowerCase();
+            String eingabe = leseZeile(Konsole.gelb(frage + " (j/n)") + " ").toLowerCase();
             if (eingabe.equals("j")) {
                 return true;
             }
@@ -871,14 +883,14 @@ public class Menue {
     /** Wie oben, aber mit eigenem Text für 0, z. B. "Behalten" beim Bearbeiten. */
     private <T> T waehle(String was, List<T> liste, Function<T, String> anzeige, String textFuerNull) {
         if (liste.isEmpty()) {
-            hinweis("Keine " + was + " vorhanden.");
+            fehler("Keine " + was + " vorhanden.");
             return null;
         }
         System.out.println(was + " wählen:");
         for (int i = 0; i < liste.size(); i++) {
-            System.out.println("  " + Konsole.fett((i + 1) + ")") + " " + anzeige.apply(liste.get(i)));
+            System.out.println("  " + Konsole.taste((i + 1) + ")") + " " + anzeige.apply(liste.get(i)));
         }
-        System.out.println("  " + Konsole.fett("0)") + " " + textFuerNull);
+        System.out.println("  " + Konsole.taste("0)") + " " + textFuerNull);
         int nr = leseZahl("Nummer: ", 0, liste.size());
         return nr == 0 ? null : liste.get(nr - 1);
     }

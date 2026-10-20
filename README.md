@@ -138,7 +138,7 @@ nicht versehentlich die Daten erwischt.
 | Windows blockiert den Start | „Weitere Informationen“, dann „Trotzdem ausführen“ (siehe Schritt 1) |
 | „Speichern fehlgeschlagen“ beim Bericht | Die Datei ist wahrscheinlich in Word/Excel offen. Dort schließen und nochmal speichern |
 | Desktop-Verknüpfung geht nicht mehr | Die App wurde in einen falschen Ordner entpackt. Es muss `Desktop\Stundenbuch\Stundenbuch.exe` geben, nicht `Desktop\Stundenbuch\Stundenbuch\Stundenbuch.exe` |
-| Keine Farben im Fenster | Farben gibt es nur im Windows Terminal (Standard unter Windows 11). Alles andere funktioniert trotzdem |
+| Keine Farben im Fenster | Farben gibt es ab Windows 10. Ist die Umgebungsvariable `NO_COLOR` gesetzt, sind sie absichtlich aus. Alles andere funktioniert trotzdem |
 | Einträge sind weg | Prüfen, ob der Ordner `Desktop\Stundenbuch-Daten` noch da ist; sonst die Sicherung zurückkopieren |
 | Ein Mitarbeiter oder Projekt lässt sich nicht löschen | Es gibt noch Einträge dafür. Zuerst diese löschen (Menüpunkt `4`) |
 

@@ -24,6 +24,11 @@ final class Konsole {
     }
 
     // ---------- Farben ----------
+    // Farbcode, überall gleich:
+    //   weiß  = normaler Text          grün = erledigt (gespeichert, angelegt, gelöscht)
+    //   rot   = Fehler, geht nicht     gelb = Frage (j/n) oder abgebrochen, nichts passiert
+    //   cyan  = Überschriften, Menünummern
+    //   grau  = Hinweise, Rahmen, Nebeninfos
 
     static String fett(String text) {
         return farbe("1", text);
@@ -37,6 +42,10 @@ final class Konsole {
         return farbe("31", text);
     }
 
+    static String gelb(String text) {
+        return farbe("33", text);
+    }
+
     static String grau(String text) {
         return farbe("90", text);
     }
@@ -45,24 +54,41 @@ final class Konsole {
         return farbe("1;36", text);
     }
 
+    /** Menünummer wie "1)", in derselben Farbe wie Überschriften. */
+    static String taste(String text) {
+        return akzent(text);
+    }
+
     /** ANSI-Farbcode um den Text. Erst nach dem Auffüllen mit Leerzeichen aufrufen, sonst stimmen die Breiten nicht. */
     private static String farbe(String code, String text) {
         return FARBE && !text.isEmpty() ? "\u001B[" + code + "m" + text + "\u001B[0m" : text;
     }
 
     /**
-     * Farben nur in einem echten Terminal, das sie kann: unter Windows im Windows Terminal
-     * oder in VS Code. Die alte Konsole würde die Steuerzeichen als Müll anzeigen.
-     * NO_COLOR (gesetzt, egal welcher Wert) schaltet die Farben ab.
+     * Farben nur in einem echten Fenster. NO_COLOR (gesetzt, egal welcher Wert) schaltet sie ab.
+     * Unter Windows muss das Fenster die Farbcodes erst verstehen lernen, siehe farbenEinschalten.
      */
     private static boolean farbeMoeglich() {
         if (System.getenv("NO_COLOR") != null || !INTERAKTIV) {
             return false;
         }
-        if (!istWindows()) {
-            return true;
+        return !istWindows() || farbenEinschalten();
+    }
+
+    /**
+     * Ein Windows-Fenster zeigt Farbcodes erst an, wenn sie eingeschaltet sind (Windows 10 und neuer).
+     * Java kann das nicht selbst, aber cmd.exe schaltet sie beim Start ein und lässt sie an.
+     * Darum genügt ein leerer cmd-Aufruf im selben Fenster. Klappt der nicht, gibt es keine Farben.
+     */
+    private static boolean farbenEinschalten() {
+        try {
+            return new ProcessBuilder("cmd", "/c", "rem").inheritIO().start().waitFor() == 0;
+        } catch (IOException ex) {
+            return false;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            return false;
         }
-        return System.getenv("WT_SESSION") != null || System.getenv("TERM_PROGRAM") != null;
     }
 
     private static boolean interaktiv() {
