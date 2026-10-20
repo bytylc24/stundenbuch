@@ -58,6 +58,8 @@ Bedient wird alles mit Zahlen: Zahl eintippen, dann Enter.
 Gut zu wissen:
 
 - **Jede Änderung wird sofort gespeichert.** Du kannst das Fenster auch einfach schließen.
+- **Farben:** grün = erledigt, rot = Fehler / geht nicht, gelb = Frage (j/n) oder abgebrochen,
+  cyan = Überschriften und Menünummern, grau = Hinweise. Normaler Text ist weiß.
 - In Auswahllisten heißt `0` immer *abbrechen* bzw. *behalten*.
 - Doppelte Namen sind nicht erlaubt (Groß-/Kleinschreibung egal).
 - Wer noch Einträge hat, kann nicht gelöscht werden. Lösche zuerst die Einträge.
