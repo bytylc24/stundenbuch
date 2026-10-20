@@ -84,7 +84,6 @@ Get-Content testeingaben\schritt10.txt | java "-Duser.home=testdaten" -jar targe
 | Was | Wo |
 |---|---|
 | Projekt (Code) | `Desktop\Stundenerfassung_v01` |
-| GitHub | https://github.com/bytylc24/stundenbuch (Branch `main`) |
 | Fertige App zum Weitergeben | `dist\Stundenbuch.zip` (entsteht durch `build-exe.bat`) |
 | Bauplan, nach dem die App entstanden ist | `STUNDENBUCH_SPEC.md` |
 | Testeingaben für die Probeläufe | `testeingaben\schritt1.txt` bis `schritt10b.txt` |
