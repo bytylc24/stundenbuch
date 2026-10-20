@@ -18,16 +18,24 @@ public class Zeiterfassung {
     private final List<Eintrag> eintraege = new ArrayList<>();
 
     // Nächste freie IDs. Sie wachsen nur, damit gelöschte IDs nie wieder vergeben werden.
+    // Ausnahme: Ist die Mitarbeiterliste ganz leer, beginnt sie wieder bei 1 (AB_01).
     private int naechsteMitarbeiterId = 1;
     private int naechsteProjektId = 1;
     private int naechsteEintragId = 1;
 
     // ---------- Hinzufügen ----------
 
-    /** Legt einen Mitarbeiter an. Gibt null zurück, wenn der Name schon vergeben ist. */
+    /**
+     * Legt einen Mitarbeiter an. Gibt null zurück, wenn der Name schon vergeben ist.
+     * Ist die Liste leer, bekommt er wieder AB_01. Das ist sicher, weil ein Mitarbeiter
+     * mit Einträgen nicht gelöscht werden kann: Kein Eintrag verweist mehr auf eine alte Kennung.
+     */
     public Mitarbeiter addMitarbeiter(String name) {
         if (istMitarbeiterNameVergeben(name)) {
             return null;
+        }
+        if (mitarbeiter.isEmpty()) {
+            naechsteMitarbeiterId = 1;
         }
         Mitarbeiter m = new Mitarbeiter(naechsteMitarbeiterId++, name);
         mitarbeiter.add(m);
