@@ -1,4 +1,4 @@
-package stundenbuch;
+package stundenbuch.bericht;
 
 import java.text.Normalizer;
 import java.time.LocalDate;
@@ -9,6 +9,12 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+
+import stundenbuch.anzeige.Format;
+import stundenbuch.modell.Eintrag;
+import stundenbuch.modell.Mitarbeiter;
+import stundenbuch.modell.Projekt;
+import stundenbuch.modell.Zeiterfassung;
 
 /**
  * Ein Stundenbericht, gefiltert nach Zeitraum, Projekt und Mitarbeiter.

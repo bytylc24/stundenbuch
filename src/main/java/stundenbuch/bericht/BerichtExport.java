@@ -1,4 +1,4 @@
-package stundenbuch;
+package stundenbuch.bericht;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -10,6 +10,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import stundenbuch.anzeige.Format;
 
 /**
  * Schreibt einen Bericht als Word-Datei (.docx) oder als CSV für Excel.

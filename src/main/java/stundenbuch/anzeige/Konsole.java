@@ -1,9 +1,11 @@
-package stundenbuch;
+package stundenbuch.anzeige;
 
 import java.io.Console;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import stundenbuch.bericht.Tabelle;
 
 /**
  * Aussehen im Terminal: Farben, Rahmen und Tabellen.

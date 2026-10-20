@@ -1,4 +1,4 @@
-package stundenbuch;
+package stundenbuch.modell;
 
 /**
  * Ein Mitarbeiter, der Stunden erfasst.

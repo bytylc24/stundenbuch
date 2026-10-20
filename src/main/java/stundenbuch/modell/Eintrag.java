@@ -1,4 +1,4 @@
-package stundenbuch;
+package stundenbuch.modell;
 
 import java.time.LocalDate;
 

@@ -1,4 +1,4 @@
-package stundenbuch;
+package stundenbuch.bericht;
 
 import java.util.ArrayList;
 import java.util.Collections;

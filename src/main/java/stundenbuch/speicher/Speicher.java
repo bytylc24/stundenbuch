@@ -1,4 +1,4 @@
-package stundenbuch;
+package stundenbuch.speicher;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -7,6 +7,11 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
+import stundenbuch.modell.Eintrag;
+import stundenbuch.modell.Mitarbeiter;
+import stundenbuch.modell.Projekt;
+import stundenbuch.modell.Zeiterfassung;
 
 /**
  * Liest und schreibt die drei CSV-Dateien (Trennzeichen ;, UTF-8).

@@ -1,4 +1,4 @@
-package stundenbuch;
+package stundenbuch.modell;
 
 /**
  * Ein Projekt, bestehend aus Ort und Kunde, z. B. Graz/Mustermann.

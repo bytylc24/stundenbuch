@@ -1,5 +1,8 @@
 package stundenbuch;
 
+import stundenbuch.anzeige.Menue;
+import stundenbuch.speicher.Speicher;
+
 /**
  * Startpunkt der Anwendung: startet nur das Menü.
  */

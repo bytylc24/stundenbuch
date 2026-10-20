@@ -1,4 +1,4 @@
-package stundenbuch;
+package stundenbuch.anzeige;
 
 import java.io.Console;
 import java.io.IOException;
@@ -14,6 +14,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.function.Function;
+
+import stundenbuch.bericht.Bericht;
+import stundenbuch.bericht.BerichtExport;
+import stundenbuch.bericht.Tabelle;
+import stundenbuch.modell.Eintrag;
+import stundenbuch.modell.Mitarbeiter;
+import stundenbuch.modell.Projekt;
+import stundenbuch.modell.Zeiterfassung;
+import stundenbuch.speicher.Speicher;
 
 /**
  * Ein- und Ausgabe im Terminal. Rechnet nicht und schreibt keine Dateien selbst.

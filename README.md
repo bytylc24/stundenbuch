@@ -161,6 +161,28 @@ Sind `java`/`mvn` nicht im PATH (z. B. nur über IntelliJ installiert):
 - Maven: `%LOCALAPPDATA%\Programs\IntelliJ IDEA 2025.2.2\plugins\maven\lib\maven3\bin\mvn.cmd`
 - Nach einem IntelliJ-Update ändert sich der Maven-Pfad. Dann auch oben in `build-exe.bat` anpassen.
 
+## Ordnerstruktur
+
+```
+Stundenerfassung_v01/
+├── README.md              diese Anleitung
+├── pom.xml                Maven: Java-Version, Name der Jar
+├── build-exe.bat          baut Stundenbuch.exe und die ZIP
+├── docs/
+│   └── STUNDENBUCH_SPEC.md   Bauplan, nach dem die App entstanden ist
+├── test/
+│   └── eingaben/          vorbereitete Eingaben für die Probeläufe
+└── src/main/java/stundenbuch/
+    ├── Main.java          Startpunkt
+    ├── modell/            die Daten und Regeln: Mitarbeiter, Projekt, Eintrag, Zeiterfassung
+    ├── speicher/          CSV-Dateien lesen und schreiben: Speicher
+    ├── bericht/           Bericht filtern, Tabellen bauen, als .docx/.csv schreiben
+    └── anzeige/           alles im Fenster: Menue, Konsole (Farben, Rahmen), Format
+```
+
+Diese Ordner entstehen beim Bauen und Testen und sind nicht in Git (`.gitignore`):
+`target/` (Jar), `dist/` (.exe und ZIP), `testdaten/` (Daten der Probeläufe).
+
 ## Projekt öffnen, bauen, starten
 
 - **IntelliJ:** *File, Open*, den Projektordner (oder die `pom.xml`) wählen, als SDK ein JDK ab 17.
@@ -173,12 +195,12 @@ Sind `java`/`mvn` nicht im PATH (z. B. nur über IntelliJ installiert):
 
 ## Testen (Probelauf)
 
-Getestet wird mit vorbereiteten Eingaben aus `testeingaben/` und einem eigenen Testordner,
+Getestet wird mit vorbereiteten Eingaben aus `test/eingaben/` und einem eigenen Testordner,
 damit die echten Daten unberührt bleiben. Die Daten landen dann in `testdaten\Desktop\Stundenbuch-Daten`.
 In PowerShell muss `-Duser.home=...` in Anführungszeichen stehen:
 
 ```
-Get-Content testeingaben\schritt10.txt | java "-Duser.home=testdaten" -jar target\stundenbuch-1.0.jar
+Get-Content test\eingaben\schritt10.txt | java "-Duser.home=testdaten" -jar target\stundenbuch-1.0.jar
 ```
 
 | Datei | Prüft |
@@ -189,7 +211,7 @@ Get-Content testeingaben\schritt10.txt | java "-Duser.home=testdaten" -jar targe
 | `schritt14.txt` | dasselbe für Projekt-Nummern und `#`-Nummern der Einträge |
 
 `schritt12.txt` enthält Umlaute. Dafür in der Git Bash starten statt in PowerShell:
-`java -Duser.home=testdaten -jar target/stundenbuch-1.0.jar < testeingaben/schritt12.txt`
+`java -Duser.home=testdaten -jar target/stundenbuch-1.0.jar < test/eingaben/schritt12.txt`
 
 ## .exe und ZIP erstellen
 
@@ -200,37 +222,41 @@ Doppelklick auf `build-exe.bat` (nur Windows). Ergebnis:
 
 ## Klassen
 
-| Klasse | Aufgabe |
-|---|---|
-| `Main` | startet das Menü |
-| `Menue` | Ein- und Ausgabe im Terminal |
-| `Konsole` | Aussehen im Terminal: Rahmen, Farben, Tabellen |
-| `Zeiterfassung` | hält Mitarbeiter, Projekte und Einträge, rechnet und prüft die Regeln |
-| `Speicher` | liest und schreibt die CSV-Dateien |
-| `Bericht` | filtert Einträge (Zeitraum, Projekt, Mitarbeiter), rechnet Summen, baut Tabellen und den Dateinamen |
-| `Tabelle` | nur Daten: Spalten und Zeilen. Terminal, Word und CSV zeichnen dieselbe Tabelle |
-| `BerichtExport` | schreibt den Bericht als `.docx` (ZIP mit XML, ohne Bibliothek) oder `.csv` |
-| `Format` | gemeinsame Formate: Datum, Monat, Stunden mit Komma |
-| `Mitarbeiter` | Datenklasse: id, name |
-| `Projekt` | Datenklasse: id, ort, kunde |
-| `Eintrag` | Datenklasse: id, datum, mitarbeiter, projekt, stunden, beschreibung |
+| Paket | Klasse | Aufgabe |
+|---|---|---|
+| `stundenbuch` | `Main` | startet das Menü |
+| `modell` | `Zeiterfassung` | hält Mitarbeiter, Projekte und Einträge, rechnet und prüft die Regeln |
+| `modell` | `Mitarbeiter` | Datenklasse: id, name |
+| `modell` | `Projekt` | Datenklasse: id, ort, kunde |
+| `modell` | `Eintrag` | Datenklasse: id, datum, mitarbeiter, projekt, stunden, beschreibung |
+| `speicher` | `Speicher` | liest und schreibt die CSV-Dateien |
+| `bericht` | `Bericht` | filtert Einträge (Zeitraum, Projekt, Mitarbeiter), rechnet Summen, baut Tabellen und den Dateinamen |
+| `bericht` | `Tabelle` | nur Daten: Spalten und Zeilen. Terminal, Word und CSV zeichnen dieselbe Tabelle |
+| `bericht` | `BerichtExport` | schreibt den Bericht als `.docx` (ZIP mit XML, ohne Bibliothek) oder `.csv` |
+| `anzeige` | `Menue` | Ein- und Ausgabe im Terminal |
+| `anzeige` | `Konsole` | Aussehen im Terminal: Rahmen, Farben, Tabellen, Fenster leeren |
+| `anzeige` | `Format` | gemeinsame Formate: Datum, Monat, Stunden mit Komma |
 
 ## Was ändere ich wo?
 
 | Ich will ... | Datei |
 |---|---|
-| Menütexte, neue Menüpunkte, Eingaben, Hilfetext | `Menue.java` |
-| Aussehen im Terminal (Rahmen, Farben) | `Konsole.java` |
-| Inhalt des Berichts, Dateiname | `Bericht.java` |
-| Aussehen der Word-Datei (Farben, Schrift) oder der CSV | `BerichtExport.java` |
-| neue Berechnungen oder Regeln (z. B. Summen, Löschschutz) | `Zeiterfassung.java` |
-| Speicherort, CSV-Format, Kopfzeile | `Speicher.java` |
-| neue Felder (z. B. Telefonnummer beim Mitarbeiter) | Datenklasse **und** `Speicher.java` (Schreiben und Laden) **und** `Menue.java` (Eingabe) |
-| Kennung `AB_01` ändern | `Mitarbeiter.java` (`KENNUNG_VORSILBE`) |
+| Menütexte, neue Menüpunkte, Eingaben, Hilfetext | `anzeige/Menue.java` |
+| Aussehen im Terminal (Rahmen, Farben) | `anzeige/Konsole.java` |
+| Inhalt des Berichts, Dateiname | `bericht/Bericht.java` |
+| Aussehen der Word-Datei (Farben, Schrift) oder der CSV | `bericht/BerichtExport.java` |
+| neue Berechnungen oder Regeln (z. B. Summen, Löschschutz) | `modell/Zeiterfassung.java` |
+| Speicherort, CSV-Format, Kopfzeile | `speicher/Speicher.java` |
+| neue Felder (z. B. Telefonnummer beim Mitarbeiter) | Datenklasse in `modell/` **und** `speicher/Speicher.java` (Schreiben und Laden) **und** `anzeige/Menue.java` (Eingabe) |
+| Kennung `AB_01` ändern | `modell/Mitarbeiter.java` (`KENNUNG_VORSILBE`) |
+
+Die Pfade gelten ab `src/main/java/stundenbuch/`.
 
 Regeln, die das Projekt sauber halten:
 
-- `Zeiterfassung`, `Bericht` und `BerichtExport` benutzen nie `System.out`; nur `Menue` redet mit dem Benutzer.
+- `modell`, `speicher` und `bericht` benutzen nie `System.out`; nur das Paket `anzeige` redet mit dem Benutzer.
+- Die `lade...`-Methoden in `Zeiterfassung` sind nur für `Speicher` gedacht (sie übernehmen gespeicherte Nummern).
+  Neue Daten im Menü immer über `add...` anlegen.
 - `Eintrag` speichert Objekte (`Mitarbeiter`, `Projekt`), keine Namen. Darum wirkt Umbenennen überall.
 - Bei Änderungen am CSV-Format: **alte Dateien müssen weiter ladbar sein**, sonst sind bei allen Benutzern
   die Daten weg. So wurde es schon für `1` und `AB_01` gelöst (`Speicher.idAusKennung`).
@@ -251,4 +277,4 @@ weil Excel Dateien, die mit `ID` beginnen, für SYLK-Dateien hält.
 
 ## Weitere Unterlagen
 
-- `STUNDENBUCH_SPEC.md`: der Bauplan, nach dem die App Schritt für Schritt entstanden ist
+- `docs/STUNDENBUCH_SPEC.md`: der Bauplan, nach dem die App Schritt für Schritt entstanden ist
