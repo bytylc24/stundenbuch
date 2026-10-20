@@ -1,6 +1,7 @@
 package stundenbuch;
 
 import java.io.Console;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,6 +11,9 @@ import java.util.List;
  * Farben nur, wenn das Terminal sie sicher kann. Sonst steht der Text einfach ohne Farbe da.
  */
 final class Konsole {
+
+    /** true in einem echten Fenster; false, wenn Ein- oder Ausgabe umgeleitet sind (Testläufe, IntelliJ). */
+    static final boolean INTERAKTIV = interaktiv();
 
     private static final boolean FARBE = farbeMoeglich();
 
@@ -52,17 +56,44 @@ final class Konsole {
      * NO_COLOR (gesetzt, egal welcher Wert) schaltet die Farben ab.
      */
     private static boolean farbeMoeglich() {
-        if (System.getenv("NO_COLOR") != null) {
+        if (System.getenv("NO_COLOR") != null || !INTERAKTIV) {
             return false;
         }
-        Console c = System.console();
-        if (c == null || !istTerminal(c)) {
-            return false; // Ausgabe geht in eine Datei oder Pipe
-        }
-        if (!System.getProperty("os.name", "").startsWith("Windows")) {
+        if (!istWindows()) {
             return true;
         }
         return System.getenv("WT_SESSION") != null || System.getenv("TERM_PROGRAM") != null;
+    }
+
+    private static boolean interaktiv() {
+        Console c = System.console();
+        return c != null && istTerminal(c);
+    }
+
+    private static boolean istWindows() {
+        return System.getProperty("os.name", "").startsWith("Windows");
+    }
+
+    /**
+     * Leert das Fenster, damit jeder Bildschirm oben beginnt. Unter Windows mit "cls",
+     * das klappt auch in der alten Konsole. Bei Testläufen passiert nichts.
+     */
+    static void leeren() {
+        if (!INTERAKTIV) {
+            return;
+        }
+        try {
+            if (istWindows()) {
+                new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
+            } else {
+                System.out.print("\u001B[H\u001B[2J");
+                System.out.flush();
+            }
+        } catch (IOException ex) {
+            // Dann bleibt der alte Text eben stehen
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /** Ab Java 22 gibt es Console.isTerminal(); vorher ist System.console() bei einer Pipe ohnehin null. */

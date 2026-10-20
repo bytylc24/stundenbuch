@@ -29,6 +29,10 @@ public class Menue {
     private final Speicher speicher;
     private Zeiterfassung zeiterfassung;
 
+    // Letzte Meldung (z. B. "Gespeichert: ..."). Weil das Fenster vor jedem Bildschirm geleert wird,
+    // zeigt der nächste Bildschirm sie noch einmal an. Jede neue Eingabe löscht sie.
+    private String meldung;
+
     public Menue(Speicher speicher) {
         this.speicher = speicher;
         // Kodierung der Konsole verwenden, damit Umlaute unter Windows stimmen
@@ -47,17 +51,27 @@ public class Menue {
         try {
             boolean weiter = true;
             while (weiter) {
+                Konsole.leeren();
                 zeigeHauptmenue();
                 int auswahl = leseZahl("Auswahl: ");
                 switch (auswahl) {
                     case 1 -> eintragErfassen();
-                    case 2 -> eintraegeAnzeigen();
+                    case 2 -> {
+                        eintraegeAnzeigen();
+                        weiterMitEnter();
+                    }
                     case 3 -> eintragBearbeiten();
                     case 4 -> eintragLoeschen();
-                    case 5 -> auswertungAnzeigen();
+                    case 5 -> {
+                        auswertungAnzeigen();
+                        weiterMitEnter();
+                    }
                     case 6 -> mitarbeiterVerwalten();
                     case 7 -> projekteVerwalten();
-                    case 8 -> hilfeAnzeigen();
+                    case 8 -> {
+                        hilfeAnzeigen();
+                        weiterMitEnter();
+                    }
                     case 9 -> berichtErstellen();
                     case 0 -> weiter = false;
                     default -> fehler("Bitte eine Zahl von 0 bis 9 eingeben.");
@@ -80,10 +94,11 @@ public class Menue {
         System.out.println();
         Konsole.titelBox("STUNDENBUCH", LocalDate.now().format(Format.TAG)).forEach(System.out::println);
         YearMonth jetzt = YearMonth.now();
-        hinweis("  " + zeiterfassung.getMitarbeiter().size() + " Mitarbeiter · "
+        System.out.println(Konsole.grau("  " + zeiterfassung.getMitarbeiter().size() + " Mitarbeiter · "
                 + zeiterfassung.getProjekte().size() + " Projekte · "
                 + zeiterfassung.getEintraege().size() + " Einträge · "
-                + jetzt.format(Format.MONAT) + ": " + Format.stunden(zeiterfassung.getStundenGesamt(jetzt)));
+                + jetzt.format(Format.MONAT) + ": " + Format.stunden(zeiterfassung.getStundenGesamt(jetzt))));
+        zeigeMeldung();
         System.out.println();
         System.out.println(Konsole.akzent("  ERFASSEN"));
         menuepunkt(1, "Eintrag erfassen");
@@ -287,9 +302,7 @@ public class Menue {
         summe.add(Format.zahl(zeiterfassung.getStundenGesamt(monat)));
         t.summe(summe.toArray(String[]::new));
 
-        System.out.println();
-        System.out.println(Konsole.ueberschrift("Auswertung: "
-                + (monat == null ? "Gesamter Zeitraum" : monat.format(Format.MONAT))));
+        titel("Auswertung: " + (monat == null ? "Gesamter Zeitraum" : monat.format(Format.MONAT)));
         hinweis("  Stunden pro Projekt und Mitarbeiter");
         zeige(t);
     }
@@ -348,8 +361,7 @@ public class Menue {
 
     /** Fragt Zeitraum, Projekt und Mitarbeiter ab. Gibt null zurück, wenn abgebrochen wurde. */
     private Bericht berichtFilterWaehlen() {
-        System.out.println();
-        System.out.println(Konsole.ueberschrift("Filter"));
+        titel("Bericht: Filter");
         System.out.println("Zeitraum wählen:");
         System.out.println("  " + Konsole.fett("1)") + " Gesamter Zeitraum");
         System.out.println("  " + Konsole.fett("2)") + " Ein Jahr");
@@ -400,6 +412,7 @@ public class Menue {
 
     /** Vorschau im Terminal, aufgebaut wie die Word-Datei. */
     private void berichtAnzeigen(Bericht b) {
+        Konsole.leeren();
         System.out.println();
         Konsole.titelBox(b.getTitel().toUpperCase(Format.DEUTSCH), "Vorschau").forEach(System.out::println);
         for (String[] a : b.getAngaben()) {
@@ -480,6 +493,7 @@ public class Menue {
                 }
                 zeige(t);
             }
+            zeigeMeldung();
             untermenue();
 
             switch (leseZahl("Auswahl: ")) {
@@ -551,6 +565,7 @@ public class Menue {
                 }
                 zeige(t);
             }
+            zeigeMeldung();
             untermenue();
 
             switch (leseZahl("Auswahl: ")) {
@@ -672,10 +687,27 @@ public class Menue {
 
     // ---------- Ausgabe ----------
 
-    /** Überschrift eines Menüpunkts mit Leerzeile davor. */
+    /** Neuer Bildschirm: Fenster leeren, dann die Überschrift des Menüpunkts. */
     private static void titel(String text) {
+        Konsole.leeren();
         System.out.println();
         System.out.println(Konsole.ueberschrift(text));
+    }
+
+    /** Zeigt die letzte Meldung (nach dem Leeren des Fensters wäre sie sonst weg). */
+    private void zeigeMeldung() {
+        if (meldung != null) {
+            System.out.println();
+            System.out.println(meldung);
+        }
+    }
+
+    /** Hält eine reine Anzeige (z. B. die Auswertung) offen, bis Enter gedrückt wird. Nicht bei Testläufen. */
+    private void weiterMitEnter() {
+        if (Konsole.INTERAKTIV) {
+            System.out.println();
+            leseZeile(Konsole.grau("Weiter mit Enter ..."));
+        }
     }
 
     /** Tabelle eingerückt ausgeben. */
@@ -683,16 +715,24 @@ public class Menue {
         Konsole.tabelle(t).forEach(z -> System.out.println("  " + z));
     }
 
-    private static void ok(String text) {
-        System.out.println(Konsole.gruen(text));
+    private void ok(String text) {
+        melde(Konsole.gruen(text));
     }
 
-    private static void fehler(String text) {
-        System.out.println(Konsole.rot(text));
+    private void fehler(String text) {
+        melde(Konsole.rot(text));
     }
 
-    private static void hinweis(String text) {
-        System.out.println(Konsole.grau(text));
+    private void hinweis(String text) {
+        melde(Konsole.grau(text));
+    }
+
+    /** Sofort ausgeben und merken, damit der nächste Bildschirm sie noch zeigt (nur im echten Fenster). */
+    private void melde(String text) {
+        System.out.println(text);
+        if (Konsole.INTERAKTIV) {
+            meldung = text;
+        }
     }
 
     // ---------- Speichern ----------
@@ -710,6 +750,7 @@ public class Menue {
 
     /** Liest eine Zeile (ohne Leerzeichen am Rand). Wirft EingabeEnde, wenn nichts mehr kommt. */
     private String leseZeile(String text) {
+        meldung = null; // was davor gemeldet wurde, hat der Benutzer gesehen
         System.out.print(text);
         if (!scanner.hasNextLine()) {
             throw new EingabeEnde();
