@@ -1,0 +1,214 @@
+/* Farben an einer Stelle: MenÃ¼ dunkel, Inhalt hell, eine Akzentfarbe (Blau), Rot nur fÃ¼r LÃ¶schen und Fehler */
+.root {
+    -menue: #1c2430;
+    -menue-text: #c9d1dc;
+    -hintergrund: #f4f6f9;
+    -karte: #ffffff;
+    -rand: #dde2ea;
+    -text: #1b2330;
+    -text-leise: #6a7586;
+    -akzent: #2563eb;
+    -akzent-dunkel: #1d4fc4;
+    -gefahr: #c62f3b;
+    -gut: #1b7f4b;
+    -fx-font-family: "Segoe UI", "Calibri", sans-serif;
+    -fx-font-size: 14px;
+    -fx-text-fill: -text;
+}
+
+/* ---------- MenÃ¼ links ---------- */
+.menue {
+    -fx-background-color: -menue;
+}
+.logo {
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 0 18 8;
+}
+.menue-knopf {
+    -fx-background-color: transparent;
+    -fx-text-fill: -menue-text;
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 10 14 10 14;
+    -fx-background-radius: 8;
+    -fx-font-size: 14px;
+    -fx-cursor: hand;
+}
+.menue-knopf:hover {
+    -fx-background-color: #2a3544;
+}
+.menue-knopf:selected {
+    -fx-background-color: -akzent;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+.menue-klein {
+    -fx-text-fill: #7f8b9c;
+    -fx-font-size: 11px;
+    -fx-padding: 0 0 0 8;
+}
+
+/* ---------- Inhalt ---------- */
+.inhalt {
+    -fx-background-color: -hintergrund;
+}
+.seitentitel {
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+}
+.zwischentitel {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+.hinweis {
+    -fx-text-fill: -text-leise;
+}
+.filter-name {
+    -fx-text-fill: -text-leise;
+    -fx-font-weight: bold;
+}
+.kachel-wert {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -akzent;
+}
+.karte {
+    -fx-background-color: -karte;
+    -fx-background-radius: 10;
+    -fx-border-color: -rand;
+    -fx-border-radius: 10;
+}
+.statusleiste {
+    -fx-border-color: -rand transparent transparent transparent;
+    -fx-padding: 8 0 0 0;
+}
+.status {
+    -fx-text-fill: -gut;
+}
+.durchsichtig, .durchsichtig > .viewport {
+    -fx-background-color: transparent;
+    -fx-background: -hintergrund;
+}
+.durchsichtig {
+    -fx-padding: 0;
+}
+
+/* ---------- KnÃ¶pfe ---------- */
+.button {
+    -fx-background-color: -karte;
+    -fx-border-color: -rand;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 16 8 16;
+    -fx-cursor: hand;
+}
+.button:hover {
+    -fx-background-color: #eaeef5;
+}
+.button:disabled {
+    -fx-opacity: 0.45;
+}
+.button.primaer {
+    -fx-background-color: -akzent;
+    -fx-border-color: -akzent;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+.button.primaer:hover {
+    -fx-background-color: -akzent-dunkel;
+}
+.button.gefahr {
+    -fx-text-fill: -gefahr;
+}
+.button.gefahr:hover {
+    -fx-background-color: #fbeaec;
+}
+
+/* ---------- Eingabefelder ---------- */
+.text-field, .text-area, .combo-box-base, .date-picker {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: -rand;
+    -fx-background-color: -karte;
+}
+.text-field, .text-area .content {
+    -fx-padding: 6 10 6 10;
+}
+.text-field:focused, .text-area:focused, .combo-box-base:focused, .date-picker:focused {
+    -fx-border-color: -akzent;
+}
+.text-area .content {
+    -fx-background-radius: 8;
+}
+.fehler {
+    -fx-text-fill: -gefahr;
+}
+.gut {
+    -fx-text-fill: -gut;
+    -fx-font-weight: bold;
+}
+.dialog-inhalt {
+    -fx-padding: 6;
+}
+
+/* ---------- Tabellen ---------- */
+.table-view {
+    -fx-background-color: -karte;
+    -fx-background-radius: 10;
+    -fx-border-color: -rand;
+    -fx-border-radius: 10;
+    -fx-padding: 1;
+}
+.table-view .column-header-background {
+    -fx-background-color: #eef1f6;
+    -fx-background-radius: 10 10 0 0;
+}
+.table-view .column-header, .table-view .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -rand transparent;
+    -fx-size: 40;
+}
+.table-view .column-header .label {
+    -fx-font-weight: bold;
+    -fx-text-fill: -text-leise;
+}
+.table-row-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #eef1f6 transparent;
+    -fx-table-cell-border-color: transparent;
+}
+.table-row-cell:selected {
+    -fx-background-color: #dbe7ff;
+}
+.table-row-cell:selected .table-cell {
+    -fx-text-fill: -text;
+}
+.table-cell {
+    -fx-padding: 0 10 0 10;
+    -fx-border-color: transparent;
+}
+.table-view .placeholder .label {
+    -fx-text-fill: -text-leise;
+}
+.daten-tabelle .table-row-cell.zeile-gruppe {
+    -fx-background-color: #eef1f6;
+    -fx-font-weight: bold;
+}
+.daten-tabelle .table-row-cell.zeile-summe {
+    -fx-background-color: #f4f6f9;
+    -fx-font-weight: bold;
+    -fx-border-color: -rand transparent transparent transparent;
+}
+.daten-tabelle .table-row-cell.zeile-gruppe .table-cell,
+.daten-tabelle .table-row-cell.zeile-summe .table-cell {
+    -fx-font-weight: bold;
+}
+
+/* ---------- Dialoge ---------- */
+.dialog-pane {
+    -fx-background-color: -karte;
+}
+.dialog-pane .button-bar .container {
+    -fx-padding: 10;
+}

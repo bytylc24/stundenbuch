@@ -14,6 +14,14 @@ erstellt auf Wunsch einen Bericht als Word- oder Excel-Datei.
 
 # Teil 1: App benutzen
 
+> **Version 2 (Oberfläche):** Diese Version hat ein normales Fenster mit JavaFX statt des schwarzen Terminals.
+> Links wählst du die Seite (Einträge, Auswertung, Bericht, Mitarbeiter, Projekte), alles andere geht mit Knöpfen und Formularen.
+> Es gibt `dist\Stundenbuch-GUI.zip` und darin `Stundenbuch.exe` (ohne Terminalfenster). Die Daten liegen im **selben Ordner**
+> `DesktopStundenbuch-Daten` wie bei der Terminal-Version und haben dasselbe Format. Beide Versionen nicht gleichzeitig öffnen,
+> sonst überschreibt die zuletzt gespeicherte die Änderungen der anderen. Die Terminal-Version startet weiter mit
+> `java -jar target/stundenbuch-2.0.jar`.
+> Der Rest dieser Anleitung beschreibt die Daten, den Bericht und die Pause; das gilt für beide Versionen.
+
 Du brauchst nur die Datei `Stundenbuch.zip`. Java musst du **nicht** installieren.
 
 ## 1. Installieren
@@ -183,6 +191,7 @@ Stundenerfassung_v01/
     ├── speicher/          CSV-Dateien lesen und schreiben: Speicher
     ├── bericht/           Bericht filtern, Tabellen bauen, als .docx/.csv schreiben
     └── anzeige/           alles im Fenster: Menue, Konsole (Farben, Rahmen), Format
+    └── gui/               die Oberfläche mit JavaFX (ab Version 2): StundenbuchApp, Seiten, EintragDialog; Design in resources/stundenbuch/gui/stundenbuch.css
 ```
 
 Diese Ordner entstehen beim Bauen und Testen und sind nicht in Git (`.gitignore`):
