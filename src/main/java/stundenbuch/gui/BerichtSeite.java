@@ -55,7 +55,7 @@ final class BerichtSeite implements Seite {
     private final ComboBox<Opt<Mitarbeiter>> mitarbeiter = new ComboBox<>();
     private final RadioButton mitPause = new RadioButton("Mit Pause (Pause abgezogen, eigene Spalte)");
     private final RadioButton ohnePause = new RadioButton("Ohne Pause (Stunden von Beginn bis Ende)");
-    private final CheckBox fuerKunden = new CheckBox("Für Kunden (pro Tag nur Arbeit und Stunden, ohne Mitarbeiter, Uhrzeit, Pause)");
+    private final CheckBox fuerKunden = new CheckBox("Für Kunden (ohne Uhrzeit, Pause und Stunden-Auswertung pro Mitarbeiter)");
     private final CheckBox einmalBeschreiben = new CheckBox("Gleiche Beschreibung am selben Tag nur einmal zeigen");
     private final Label pauseHinweis = new Label("Noch keine Pausen erfasst – die Wahl wirkt erst dann.");
 
@@ -154,7 +154,7 @@ final class BerichtSeite implements Seite {
         mitPause.selectedProperty().addListener((o, a, b) -> neuBauen.run());
         einmalBeschreiben.selectedProperty().addListener((o, a, b) -> neuBauen.run());
         fuerKunden.selectedProperty().addListener((o, a, b) -> {
-            einmalBeschreiben.setDisable(b); // bei Kunden steht die Arbeit pro Tag sowieso nur einmal
+            einmalBeschreiben.setDisable(b); // bei Kunden steht die Beschreibung pro Tag sowieso nur einmal
             neuBauen.run();
         });
 
