@@ -61,11 +61,11 @@ public class Zeiterfassung {
 
     /** Legt einen Eintrag an. Gibt es keine Einträge mehr, beginnt die #-Nummer wieder bei 1. */
     public Eintrag addEintrag(LocalDate datum, Mitarbeiter m, Projekt p, double stunden, String text,
-                              LocalTime von, LocalTime bis) {
+                              LocalTime von, LocalTime bis, int pauseMinuten) {
         if (eintraege.isEmpty()) {
             naechsteEintragId = 1;
         }
-        Eintrag e = new Eintrag(naechsteEintragId++, datum, m, p, stunden, text, von, bis);
+        Eintrag e = new Eintrag(naechsteEintragId++, datum, m, p, stunden, text, von, bis, pauseMinuten);
         eintraege.add(e);
         return e;
     }
@@ -83,8 +83,8 @@ public class Zeiterfassung {
     }
 
     public void ladeEintrag(int id, LocalDate datum, Mitarbeiter m, Projekt p, double stunden, String text,
-                            LocalTime von, LocalTime bis) {
-        eintraege.add(new Eintrag(id, datum, m, p, stunden, text, von, bis));
+                            LocalTime von, LocalTime bis, int pauseMinuten) {
+        eintraege.add(new Eintrag(id, datum, m, p, stunden, text, von, bis, pauseMinuten));
         naechsteEintragId = Math.max(naechsteEintragId, id + 1);
     }
 

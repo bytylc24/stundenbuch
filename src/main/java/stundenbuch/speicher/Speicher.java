@@ -27,8 +27,8 @@ public class Speicher {
     private static final String EINTRAEGE_DATEI = "eintraege.csv";
 
     // Beginnt bewusst mit "Nr" und nicht mit "ID": Excel hält Dateien, die mit "ID" anfangen, für SYLK-Dateien
-    // Von und Bis (Uhrzeit) stehen hinten, damit ältere Dateien mit 6 Spalten weiter ladbar bleiben
-    private static final String EINTRAEGE_KOPFZEILE = "Nr;Datum;Mitarbeiter;ProjektNr;Stunden;Beschreibung;Von;Bis";
+    // Von, Bis (Uhrzeit) und Pause (Minuten) stehen hinten, damit ältere Dateien mit 6 oder 8 Spalten weiter ladbar bleiben
+    private static final String EINTRAEGE_KOPFZEILE = "Nr;Datum;Mitarbeiter;ProjektNr;Stunden;Beschreibung;Von;Bis;Pause";
 
     private static final int SICHERUNGEN_BEHALTEN = 14;
 
@@ -105,7 +105,8 @@ public class Speicher {
             // Datum als ISO (2026-10-05), Stunden mit Punkt (Double.toString ist unabhängig von der Sprache)
             zeilen.add(e.getId() + ";" + e.getDatum() + ";" + e.getMitarbeiter().getKennung() + ";"
                     + e.getProjekt().getId() + ";" + e.getStunden() + ";" + escape(e.getBeschreibung()) + ";"
-                    + (e.getVon() == null ? "" : e.getVon()) + ";" + (e.getBis() == null ? "" : e.getBis()));
+                    + (e.getVon() == null ? "" : e.getVon()) + ";" + (e.getBis() == null ? "" : e.getBis()) + ";"
+                    + e.getPauseMinuten());
         }
 
         // Erst alle drei in Hilfsdateien schreiben, dann austauschen: Geht beim Schreiben etwas schief
@@ -199,7 +200,7 @@ public class Speicher {
             }
         }
 
-        // 6 Spalten (ältere Dateien, ohne Uhrzeit) oder 8 Spalten (mit Von und Bis)
+        // 6 Spalten (ältere Dateien, ohne Uhrzeit), 8 (mit Von und Bis) oder 9 (mit Pause in Minuten)
         for (String[] teile : lese(EINTRAEGE_DATEI, 6)) {
             if (teile[0].equals("Nr")) {
                 continue; // Kopfzeile ist kein Eintrag (egal ob alte oder neue)
@@ -218,8 +219,9 @@ public class Speicher {
                     von = LocalTime.parse(teile[6]);
                     bis = LocalTime.parse(teile[7]);
                 }
+                int pause = teile.length >= 9 && !teile[8].isEmpty() ? Integer.parseInt(teile[8]) : 0;
                 z.ladeEintrag(Integer.parseInt(teile[0]), LocalDate.parse(teile[1]), m, p,
-                        Double.parseDouble(teile[4]), unescape(teile[5]), von, bis);
+                        Double.parseDouble(teile[4]), unescape(teile[5]), von, bis, pause);
             } catch (RuntimeException ex) {
                 uebersprungen++;
             }

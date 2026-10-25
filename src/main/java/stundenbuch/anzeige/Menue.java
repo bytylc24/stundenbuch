@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
@@ -159,16 +160,19 @@ public class Menue {
         // Entweder von-bis (daraus werden die Stunden berechnet) oder die Stunden direkt
         Zeit zeit = leseZeit("Uhrzeit von-bis (z. B. 9:00-18:30, leer = Stunden direkt eingeben): ", false);
         double stunden;
+        int pause = 0;
         if (zeit != null) {
-            stunden = Eintrag.stundenZwischen(zeit.von(), zeit.bis());
-            System.out.println(Konsole.grau("= " + Format.stunden(stunden)));
+            pause = lesePause(zeit.von(), zeit.bis(), 0);
+            stunden = Eintrag.stundenZwischen(zeit.von(), zeit.bis(), pause);
+            System.out.println(Konsole.grau("= " + Format.stunden(stunden)
+                    + (pause > 0 ? " (ohne " + pause + " Min. Pause)" : "")));
         } else {
             stunden = leseStunden("Stunden: ");
         }
         String beschreibung = leseText("Was wurde gemacht? ");
 
         Eintrag e = zeiterfassung.addEintrag(datum, m, p, stunden, beschreibung,
-                zeit == null ? null : zeit.von(), zeit == null ? null : zeit.bis());
+                zeit == null ? null : zeit.von(), zeit == null ? null : zeit.bis(), pause);
         speichern();
         ok("Gespeichert: Eintrag #" + e.getId() + " (" + e.getDatum().format(Format.DATUM)
                 + ", " + m.getName() + ", " + p.getName() + ", " + Format.stunden(stunden) + ")");
@@ -203,7 +207,7 @@ public class Menue {
                     + Konsole.links(e.getProjekt().getName(), breiteP) + "  "
                     + Konsole.rechts(Format.stunden(e.getStunden()), 8));
             // Die Uhrzeit steht vor der Beschreibung, die weiteren Zeilen sind passend eingerückt
-            String zeit = e.getZeitText();
+            String zeit = e.getZeitText() + (e.getPauseMinuten() > 0 ? ", Pause " + e.getPauseMinuten() + " Min." : "");
             String einzug = " ".repeat(zeit.isEmpty() ? 0 : zeit.length() + 2);
             boolean erste = true;
             for (String zeile : Konsole.umbrechen(e.getBeschreibung(), Konsole.BREITE - 8 - einzug.length())) {
@@ -271,10 +275,13 @@ public class Menue {
             bis = zeit.bis();
         }
         double stunden;
+        int pause = 0;
         if (von != null) {
-            // Mit Uhrzeit sind die Stunden immer daraus berechnet
-            stunden = Eintrag.stundenZwischen(von, bis);
-            System.out.println(Konsole.grau("Stunden: " + Format.stunden(stunden) + " (aus der Uhrzeit)"));
+            // Mit Uhrzeit sind die Stunden immer daraus berechnet (abzüglich Pause)
+            pause = lesePause(von, bis, e.getPauseMinuten());
+            stunden = Eintrag.stundenZwischen(von, bis, pause);
+            System.out.println(Konsole.grau("Stunden: " + Format.stunden(stunden) + " (aus der Uhrzeit"
+                    + (pause > 0 ? ", ohne " + pause + " Min. Pause" : "") + ")"));
         } else {
             stunden = leseStunden("Stunden (alt: " + Format.zahl(e.getStunden()) + "): ",
                     e.getStunden());
@@ -282,7 +289,7 @@ public class Menue {
         String beschreibung = leseText("Was wurde gemacht? (alt: " + e.getBeschreibung() + "): ",
                 e.getBeschreibung());
 
-        e.setZeit(von, bis);
+        e.setZeit(von, bis, pause);
         e.setDatum(datum);
         e.setMitarbeiter(m);
         e.setProjekt(p);
@@ -455,7 +462,16 @@ public class Menue {
         // 0 heißt hier nicht "abbrechen", sondern "kein Filter"
         Projekt p = waehle("Projekt", zeiterfassung.getProjekte(), Projekt::getName, "Alle Projekte");
         Mitarbeiter m = waehle("Mitarbeiter", zeiterfassung.getMitarbeiter(), Mitarbeiter::getName, "Alle Mitarbeiter");
-        return new Bericht(zeiterfassung, zeitraum, p, m);
+
+        // Nur fragen, wenn es überhaupt Einträge mit Pause gibt
+        boolean mitPause = true;
+        if (zeiterfassung.getEintraege().stream().anyMatch(e -> e.getPauseMinuten() > 0)) {
+            System.out.println("Pause im Bericht:");
+            System.out.println("  " + Konsole.taste("1)") + " Mit Pause (Pause abgezogen, eigene Spalte Pause)");
+            System.out.println("  " + Konsole.taste("2)") + " Ohne Pause (Stunden von Beginn bis Ende, keine Pause-Spalte)");
+            mitPause = leseZahl("Nummer: ", 1, 2) == 1;
+        }
+        return new Bericht(zeiterfassung, zeitraum, p, m, mitPause);
     }
 
     /** Vorschau im Terminal, aufgebaut wie die Word-Datei. */
@@ -696,10 +712,11 @@ public class Menue {
                 DIE MENÜPUNKTE
                   1) Eintrag erfassen
                      Datum (TT.MM.JJJJ, leer = heute), Mitarbeiter, Projekt,
-                     dann entweder die Uhrzeit von-bis (z. B. 9:00-18:30, die Stunden
-                     werden daraus berechnet) oder direkt die Stunden (z. B. 4,5,
-                     erlaubt: mehr als 0 bis 24), und die Beschreibung.
-                     Die Uhrzeit erscheint auch in Terminal, Word und CSV.
+                     dann entweder die Uhrzeit von-bis (z. B. 9:00-18:30) und die Pause
+                     (z. B. 30 = Minuten oder 0,5h; die Stunden werden daraus berechnet,
+                     8:00-15:30 mit 30 Min. Pause ergibt 7,0 h) oder direkt die Stunden
+                     (z. B. 4,5, erlaubt: mehr als 0 bis 24), und die Beschreibung.
+                     Die Uhrzeit und die Pause erscheinen auch in Terminal, Word und CSV.
                   2) Arbeitstage anzeigen
                      Alle Einträge nach Tag, neuester zuerst, mit Tagessumme.
                      Die Zahl nach # brauchst du zum Bearbeiten und Löschen.
@@ -713,7 +730,9 @@ public class Menue {
                      Wähle den gesamten Zeitraum oder einen einzelnen Monat.
                   9) Bericht ansehen und speichern
                      Filter wählen: Zeitraum (alles, Jahr, Monat oder von - bis),
-                     Projekt und Mitarbeiter (0 = alle). Der Bericht erscheint zuerst
+                     Projekt und Mitarbeiter (0 = alle). Gibt es Einträge mit Pause,
+                     wählst du noch: mit Pause (Pause abgezogen, eigene Spalte) oder
+                     ohne Pause (Stunden von Beginn bis Ende). Der Bericht erscheint zuerst
                      hier im Terminal. Gefällt er dir, speichere ihn als Word (.docx)
                      oder CSV (für Excel), im selben Aufbau. Der Dateiname kommt aus
                      dem Filter, z. B. oeblarn_2026_tanja.docx.
@@ -935,6 +954,48 @@ public class Menue {
                 continue;
             }
             return new Zeit(von, bis);
+        }
+    }
+
+    // 30, 30 min, 0,5h, 1h, 0:30
+    private static final Pattern PAUSE_MUSTER =
+            Pattern.compile("(?:(\\d{1,2}):(\\d{2}))|(?:(\\d+(?:[.,]\\d+)?)\\s*(min|m|h|std)?)");
+
+    /**
+     * Fragt die Pause zwischen von und bis ab, in Minuten. Leere Eingabe = alter Wert (beim Erfassen 0).
+     * Eine Zahl allein sind Minuten, mit h oder Komma Stunden (0,5h), mit Doppelpunkt h:mm (0:30).
+     * Die Pause muss kürzer sein als die Arbeitszeit von-bis.
+     */
+    private int lesePause(LocalTime von, LocalTime bis, int standard) {
+        long gesamt = Duration.between(von, bis).toMinutes();
+        while (true) {
+            String eingabe = leseZeile("Pause (z. B. 30 = Minuten, 0,5h = Stunden, leer = "
+                    + (standard == 0 ? "keine" : standard + " Min. behalten") + ", 0 = keine): ")
+                    .toLowerCase().trim();
+            if (eingabe.isEmpty()) {
+                return standard;
+            }
+            Matcher m = PAUSE_MUSTER.matcher(eingabe);
+            if (!m.matches()) {
+                fehler("Bitte so eingeben: 30 (Minuten) oder 0,5h (Stunden)");
+                continue;
+            }
+            double minuten;
+            if (m.group(1) != null) {
+                minuten = Integer.parseInt(m.group(1)) * 60 + Integer.parseInt(m.group(2));
+            } else {
+                double zahl = Double.parseDouble(m.group(3).replace(',', '.'));
+                String einheit = m.group(4);
+                boolean stunden = "h".equals(einheit) || "std".equals(einheit)
+                        || (einheit == null && !m.group(3).matches("\\d+"));
+                minuten = stunden ? zahl * 60 : zahl;
+            }
+            int pause = (int) Math.round(minuten);
+            if (pause >= gesamt) {
+                fehler("Die Pause muss kürzer sein als die Arbeitszeit (" + gesamt + " Minuten).");
+                continue;
+            }
+            return pause;
         }
     }
 

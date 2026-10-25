@@ -56,12 +56,14 @@ public class Bericht {
     private final Zeitraum zeitraum;
     private final Projekt projekt;          // null = alle Projekte
     private final Mitarbeiter mitarbeiter;  // null = alle Mitarbeiter
+    private final boolean mitPause;         // true = Pause abgezogen und eigene Spalte, false = Pause nicht beachtet
     private final LocalDate erstellt = LocalDate.now();
     private final List<Eintrag> eintraege;
     private final List<Projekt> alleProjekte;
     private final List<Mitarbeiter> alleMitarbeiter;
 
-    public Bericht(Zeiterfassung z, Zeitraum zeitraum, Projekt projekt, Mitarbeiter mitarbeiter) {
+    public Bericht(Zeiterfassung z, Zeitraum zeitraum, Projekt projekt, Mitarbeiter mitarbeiter, boolean mitPause) {
+        this.mitPause = mitPause;
         this.zeitraum = zeitraum;
         this.projekt = projekt;
         this.mitarbeiter = mitarbeiter;
@@ -86,12 +88,27 @@ public class Bericht {
 
     /** Was im Kopf des Berichts steht: Paare aus Bezeichnung und Wert. */
     public List<String[]> getAngaben() {
-        return List.of(
+        List<String[]> angaben = new ArrayList<>(List.of(
                 new String[]{"Projekt", projekt == null ? "Alle Projekte" : projekt.getName()},
                 new String[]{"Mitarbeiter", mitarbeiter == null ? "Alle Mitarbeiter"
                         : mitarbeiter.getName() + " (" + mitarbeiter.getKennung() + ")"},
                 new String[]{"Zeitraum", zeitraum.text()},
-                new String[]{"Erstellt am", erstellt.format(Format.DATUM)});
+                new String[]{"Erstellt am", erstellt.format(Format.DATUM)}));
+        if (hatPausen()) {
+            angaben.add(new String[]{"Pause", mitPause ? "Abgezogen (Stunden ohne Pause)"
+                    : "Nicht abgezogen (Stunden von Beginn bis Ende)"});
+        }
+        return angaben;
+    }
+
+    /** Gibt es in diesem Bericht mindestens einen Eintrag mit Pause? */
+    private boolean hatPausen() {
+        return eintraege.stream().anyMatch(e -> e.getPauseMinuten() > 0);
+    }
+
+    /** Die Stunden eines Eintrags im Bericht: je nach Wahl ohne oder mit der Pause. */
+    private double stunden(Eintrag e) {
+        return mitPause ? e.getStunden() : e.getStundenMitPause();
     }
 
     /** Die großen Zahlen oben im Bericht: Paare aus Wert und Bezeichnung. */
@@ -156,7 +173,12 @@ public class Bericht {
         if (mitZeit) {
             t.spalte("Zeit");
         }
-        t.spalte("Beschreibung", false, 36).zahlenSpalte("Stunden");
+        boolean mitPauseSpalte = mitPause && hatPausen();
+        t.spalte("Beschreibung", false, 36);
+        if (mitPauseSpalte) {
+            t.zahlenSpalte("Pause");
+        }
+        t.zahlenSpalte("Stunden");
         int leer = t.getSpalten().size() - 2; // Zellen zwischen Beschriftung und Stunden bei Summen
 
         Map<YearMonth, List<Eintrag>> proMonat = new TreeMap<>();
@@ -183,7 +205,10 @@ public class Bericht {
                     zellen.add(e.getZeitText());
                 }
                 zellen.add(e.getBeschreibung());
-                zellen.add(Format.zahl(e.getStunden()));
+                if (mitPauseSpalte) {
+                    zellen.add(e.getPauseMinuten() > 0 ? Format.zahl(e.getPauseStunden()) : "");
+                }
+                zellen.add(Format.zahl(stunden(e)));
                 t.zeile(zellen.toArray(String[]::new));
             }
             if (mehrereMonate) {
@@ -226,8 +251,8 @@ public class Bericht {
         t.summe(zellen.toArray(String[]::new));
     }
 
-    private static double summe(List<Eintrag> liste) {
-        return liste.stream().mapToDouble(Eintrag::getStunden).sum();
+    private double summe(List<Eintrag> liste) {
+        return liste.stream().mapToDouble(this::stunden).sum();
     }
 
     // ---------- Dateiname ----------
@@ -253,6 +278,9 @@ public class Bericht {
             if (zeitraum.dateiTeil() == null) {
                 teile.add("gesamt");
             }
+        }
+        if (!mitPause && hatPausen()) {
+            teile.add("ohne_pause"); // damit der Bericht mit Pause nicht überschrieben wird
         }
         return String.join("_", teile);
     }
