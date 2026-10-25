@@ -157,6 +157,22 @@ public class Zeiterfassung {
                 .sum();
     }
 
+    /**
+     * Die Beschreibung, die an diesem Tag schon für das Projekt eingetragen wurde (null = keine).
+     * So muss sie bei den weiteren Mitarbeitern nicht nochmal geschrieben werden.
+     */
+    public String getBeschreibungAmTag(LocalDate datum, Projekt p) {
+        return eintraege.stream()
+                .filter(e -> e.getDatum().equals(datum) && e.getProjekt() == p)
+                .map(Eintrag::getBeschreibung)
+                .findFirst().orElse(null);
+    }
+
+    /** Der zuletzt erfasste Eintrag (höchste Nummer), null wenn es noch keinen gibt. */
+    public Eintrag getLetzterEintrag() {
+        return eintraege.stream().max(Comparator.comparingInt(Eintrag::getId)).orElse(null);
+    }
+
     /** Alle Monate, in denen es Einträge gibt, neuester zuerst. */
     public List<YearMonth> getMonateMitEintraegen() {
         return eintraege.stream()

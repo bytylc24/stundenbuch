@@ -221,15 +221,18 @@ final class Konsole {
 
         int[] vorher = alle;
         boolean vorherNormal = false; // nach dem Kopf immer eine Linie
+        int vorherBlock = 0;
         for (Tabelle.Zeile z : t.getZeilen()) {
             int[] jetzt = grenzen(n, t.spanne(z));
             boolean normal = z.art() == Tabelle.Art.NORMAL;
-            if (!normal || !vorherNormal) {
+            // Zeilen eines Tages (gleicher Block) stehen beisammen, zwischen den Tagen ist eine Linie
+            if (!normal || !vorherNormal || z.block() != vorherBlock) {
                 aus.add(grau(linie(w, vorher, jetzt, '├', '┤')));
             }
             aus.addAll(zeichneZeile(t, z, w, false));
             vorher = jetzt;
             vorherNormal = normal;
+            vorherBlock = z.block();
         }
         aus.add(grau(linie(w, vorher, new int[0], '└', '┘')));
         return aus;

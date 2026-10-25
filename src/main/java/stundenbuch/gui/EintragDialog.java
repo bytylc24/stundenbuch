@@ -3,12 +3,15 @@ package stundenbuch.gui;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
@@ -17,6 +20,7 @@ import javafx.scene.control.RadioButton;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -36,7 +40,7 @@ import stundenbuch.modell.Projekt;
 final class EintragDialog {
 
     /** Alles, was ein gültiger Eintrag braucht. fehler != null heißt: noch nicht gültig. */
-    private record Ergebnis(String fehler, LocalDate datum, Mitarbeiter m, Projekt p, double stunden,
+    private record Ergebnis(String fehler, LocalDate datum, List<Mitarbeiter> ms, Projekt p, double stunden,
                             LocalTime von, LocalTime bis, int pause, String text) {
 
         static Ergebnis fehler(String text) {
@@ -48,7 +52,9 @@ final class EintragDialog {
     private final Eintrag bestehend; // null = neuer Eintrag
 
     private final DatePicker datum = new DatePicker();
-    private final ComboBox<Mitarbeiter> mitarbeiter = new ComboBox<>();
+    private final ComboBox<Mitarbeiter> mitarbeiter = new ComboBox<>();           // beim Bearbeiten
+    private final List<CheckBox> leute = new ArrayList<>();                       // bei einem neuen Eintrag: mehrere möglich
+    private final FlowPane leuteAuswahl = new FlowPane(14, 6);
     private final ComboBox<Projekt> projekt = new ComboBox<>();
     private final RadioButton mitUhrzeit = new RadioButton("Uhrzeit von – bis");
     private final RadioButton nurStunden = new RadioButton("Stunden direkt");
@@ -103,6 +109,7 @@ final class EintragDialog {
         datum.getEditor().textProperty().addListener((o, a, b) -> pruefen.run());
         datum.valueProperty().addListener((o, a, b) -> pruefen.run());
         mitarbeiter.valueProperty().addListener((o, a, b) -> pruefen.run());
+        leute.forEach(c -> c.selectedProperty().addListener((o, a, b) -> pruefen.run()));
         projekt.valueProperty().addListener((o, a, b) -> pruefen.run());
         mitUhrzeit.selectedProperty().addListener((o, a, b) -> pruefen.run());
         von.textProperty().addListener((o, a, b) -> pruefen.run());
@@ -144,7 +151,7 @@ final class EintragDialog {
         bis.setPromptText("15:30");
         pause.setPromptText("z. B. 30 oder 0,5h");
         stunden.setPromptText("z. B. 4,5");
-        beschreibung.setPromptText("Was wurde gemacht?");
+        beschreibung.setPromptText("Was wurde gemacht? (leer = wie bei den anderen vom selben Tag)");
         beschreibung.setPrefRowCount(3);
         beschreibung.setWrapText(true);
         von.setPrefColumnCount(6);
@@ -157,7 +164,22 @@ final class EintragDialog {
         g.setMinWidth(480);
         int r = 0;
         g.addRow(r++, new Label("Datum"), datum);
-        g.addRow(r++, new Label("Mitarbeiter"), mitarbeiter);
+        if (bestehend == null) {
+            // Mehrere Mitarbeiter auf einmal: gleiche Zeiten und Beschreibung, pro Person ein Eintrag
+            CheckBox alle = new CheckBox("Alle");
+            alle.setOnAction(e -> leute.forEach(c -> c.setSelected(alle.isSelected())));
+            leuteAuswahl.getChildren().add(alle);
+            for (Mitarbeiter m : daten.z().getMitarbeiter()) {
+                CheckBox c = new CheckBox(m.getName());
+                c.setUserData(m);
+                leute.add(c);
+                leuteAuswahl.getChildren().add(c);
+            }
+            leuteAuswahl.setPrefWrapLength(420);
+            g.addRow(r++, new Label("Mitarbeiter"), leuteAuswahl);
+        } else {
+            g.addRow(r++, new Label("Mitarbeiter"), mitarbeiter);
+        }
         g.addRow(r++, new Label("Projekt"), projekt);
         g.add(new HBox(18, mitUhrzeit, nurStunden), 1, r++);
         g.addRow(r++, new Label("Von"), new HBox(8, von, new Label("bis"), bis));
@@ -177,10 +199,23 @@ final class EintragDialog {
             datum.setValue(LocalDate.now());
             mitUhrzeit.setSelected(true);
             if (daten.z().getMitarbeiter().size() == 1) {
-                mitarbeiter.setValue(daten.z().getMitarbeiter().get(0));
+                leute.get(0).setSelected(true);
             }
             if (daten.z().getProjekte().size() == 1) {
                 projekt.setValue(daten.z().getProjekte().get(0));
+            }
+            // Meist geht es so weiter wie beim letzten Eintrag: gleiches Projekt, gleiche Zeiten
+            Eintrag letzter = daten.z().getLetzterEintrag();
+            if (letzter != null) {
+                projekt.setValue(letzter.getProjekt());
+                if (letzter.getVon() != null) {
+                    von.setText(letzter.getVon().toString());
+                    bis.setText(letzter.getBis().toString());
+                    pause.setText(letzter.getPauseMinuten() > 0 ? String.valueOf(letzter.getPauseMinuten()) : "");
+                } else {
+                    nurStunden.setSelected(true);
+                    stunden.setText(Format.zahl(letzter.getStunden()));
+                }
             }
             return;
         }
@@ -209,8 +244,11 @@ final class EintragDialog {
         if (d == null) {
             return Ergebnis.fehler("Bitte ein gültiges Datum eingeben (TT.MM.JJJJ).");
         }
-        if (mitarbeiter.getValue() == null) {
-            return Ergebnis.fehler("Bitte einen Mitarbeiter wählen.");
+        List<Mitarbeiter> ms = bestehend != null
+                ? (mitarbeiter.getValue() == null ? List.of() : List.of(mitarbeiter.getValue()))
+                : leute.stream().filter(CheckBox::isSelected).map(c -> (Mitarbeiter) c.getUserData()).toList();
+        if (ms.isEmpty()) {
+            return Ergebnis.fehler("Bitte mindestens einen Mitarbeiter wählen.");
         }
         if (projekt.getValue() == null) {
             return Ergebnis.fehler("Bitte ein Projekt wählen.");
@@ -246,20 +284,29 @@ final class EintragDialog {
         }
         String text = beschreibung.getText().trim();
         if (text.isEmpty()) {
-            return Ergebnis.fehler("Bitte beschreiben, was gemacht wurde.");
+            // Leer ist erlaubt, wenn am selben Tag für das Projekt schon etwas beschrieben wurde: das gilt dann auch hier
+            text = bestehend != null ? "" : daten.z().getBeschreibungAmTag(d, projekt.getValue());
+            if (text == null || text.isEmpty()) {
+                return Ergebnis.fehler("Bitte beschreiben, was gemacht wurde.");
+            }
         }
-        return new Ergebnis(null, d, mitarbeiter.getValue(), projekt.getValue(), h, v, b, p, text);
+        return new Ergebnis(null, d, ms, projekt.getValue(), h, v, b, p, text);
     }
 
     private void uebernehmen(Ergebnis e) {
         if (bestehend == null) {
-            Eintrag neu = daten.z().addEintrag(e.datum(), e.m(), e.p(), e.stunden(), e.text(), e.von(), e.bis(), e.pause());
+            Eintrag neu = null;
+            for (Mitarbeiter m : e.ms()) {
+                neu = daten.z().addEintrag(e.datum(), m, e.p(), e.stunden(), e.text(), e.von(), e.bis(), e.pause());
+            }
             daten.geaendert();
-            daten.meldung("Gespeichert: Eintrag #" + neu.getId() + " (" + Format.stunden(e.stunden()) + ")");
+            daten.meldung(e.ms().size() == 1
+                    ? "Gespeichert: Eintrag #" + neu.getId() + " (" + Format.stunden(e.stunden()) + ")"
+                    : "Gespeichert: " + e.ms().size() + " Einträge (je " + Format.stunden(e.stunden()) + ")");
         } else {
             bestehend.setZeit(e.von(), e.bis(), e.pause());
             bestehend.setDatum(e.datum());
-            bestehend.setMitarbeiter(e.m());
+            bestehend.setMitarbeiter(e.ms().get(0));
             bestehend.setProjekt(e.p());
             bestehend.setStunden(e.stunden());
             bestehend.setBeschreibung(e.text());

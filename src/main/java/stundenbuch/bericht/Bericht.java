@@ -6,8 +6,12 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import stundenbuch.anzeige.Format;
@@ -57,12 +61,21 @@ public class Bericht {
     private final Projekt projekt;          // null = alle Projekte
     private final Mitarbeiter mitarbeiter;  // null = alle Mitarbeiter
     private final boolean mitPause;         // true = Pause abgezogen und eigene Spalte, false = Pause nicht beachtet
+    private final boolean fuerKunden;         // true = pro Tag nur Arbeit und Stunden, keine Mitarbeiter und Details
+    private final boolean beschreibungEinmal; // true = gleiche Beschreibung am selben Tag nur einmal zeigen
     private final LocalDate erstellt = LocalDate.now();
     private final List<Eintrag> eintraege;
     private final List<Projekt> alleProjekte;
     private final List<Mitarbeiter> alleMitarbeiter;
 
     public Bericht(Zeiterfassung z, Zeitraum zeitraum, Projekt projekt, Mitarbeiter mitarbeiter, boolean mitPause) {
+        this(z, zeitraum, projekt, mitarbeiter, mitPause, false, false);
+    }
+
+    public Bericht(Zeiterfassung z, Zeitraum zeitraum, Projekt projekt, Mitarbeiter mitarbeiter, boolean mitPause,
+                   boolean fuerKunden, boolean beschreibungEinmal) {
+        this.fuerKunden = fuerKunden;
+        this.beschreibungEinmal = beschreibungEinmal;
         this.mitPause = mitPause;
         this.zeitraum = zeitraum;
         this.projekt = projekt;
@@ -88,13 +101,15 @@ public class Bericht {
 
     /** Was im Kopf des Berichts steht: Paare aus Bezeichnung und Wert. */
     public List<String[]> getAngaben() {
-        List<String[]> angaben = new ArrayList<>(List.of(
-                new String[]{"Projekt", projekt == null ? "Alle Projekte" : projekt.getName()},
-                new String[]{"Mitarbeiter", mitarbeiter == null ? "Alle Mitarbeiter"
-                        : mitarbeiter.getName() + " (" + mitarbeiter.getKennung() + ")"},
-                new String[]{"Zeitraum", zeitraum.text()},
-                new String[]{"Erstellt am", erstellt.format(Format.DATUM)}));
-        if (hatPausen()) {
+        List<String[]> angaben = new ArrayList<>();
+        angaben.add(new String[]{"Projekt", projekt == null ? "Alle Projekte" : projekt.getName()});
+        if (!fuerKunden) {
+            angaben.add(new String[]{"Mitarbeiter", mitarbeiter == null ? "Alle Mitarbeiter"
+                    : mitarbeiter.getName() + " (" + mitarbeiter.getKennung() + ")"});
+        }
+        angaben.add(new String[]{"Zeitraum", zeitraum.text()});
+        angaben.add(new String[]{"Erstellt am", erstellt.format(Format.DATUM)});
+        if (!fuerKunden && hatPausen()) {
             angaben.add(new String[]{"Pause", mitPause ? "Abgezogen (Stunden ohne Pause)"
                     : "Nicht abgezogen (Stunden von Beginn bis Ende)"});
         }
@@ -114,6 +129,11 @@ public class Bericht {
     /** Die großen Zahlen oben im Bericht: Paare aus Wert und Bezeichnung. */
     public List<String[]> getKennzahlen() {
         long tage = eintraege.stream().map(Eintrag::getDatum).distinct().count();
+        if (fuerKunden) {
+            return List.of(
+                    new String[]{Format.stunden(summe(eintraege)), "Stunden gesamt"},
+                    new String[]{String.valueOf(tage), tage == 1 ? "Arbeitstag" : "Arbeitstage"});
+        }
         return List.of(
                 new String[]{Format.stunden(summe(eintraege)), "Stunden gesamt"},
                 new String[]{String.valueOf(eintraege.size()), eintraege.size() == 1 ? "Eintrag" : "Einträge"},
@@ -123,7 +143,10 @@ public class Bericht {
     /** Einträge, dazu Summen pro Mitarbeiter und pro Projekt, wenn es mehr als einen gibt. */
     public List<Tabelle> getTabellen() {
         List<Tabelle> tabellen = new ArrayList<>();
-        tabellen.add(eintragsTabelle());
+        tabellen.add(fuerKunden ? kundenTabelle() : eintragsTabelle());
+        if (fuerKunden) {
+            return tabellen; // Kunden sehen keine Aufteilung auf Mitarbeiter
+        }
 
         if (mitarbeiter == null) {
             List<Mitarbeiter> beteiligt = alleMitarbeiter.stream()
@@ -192,7 +215,16 @@ public class Bericht {
             if (mehrereMonate) {
                 t.gruppe(name);
             }
+            LocalDate letzterTag = null;
+            Set<String> gezeigt = new HashSet<>();
+            int block = 0;
             for (Eintrag e : monat.getValue()) {
+                // Jeder Tag ist ein Block, den Word und die Vorschau gemeinsam umranden
+                if (!e.getDatum().equals(letzterTag)) {
+                    letzterTag = e.getDatum();
+                    gezeigt.clear();
+                    block++;
+                }
                 List<String> zellen = new ArrayList<>();
                 zellen.add(e.getDatum().format(Format.TAG));
                 if (mitarbeiter == null) {
@@ -204,11 +236,72 @@ public class Bericht {
                 if (mitZeit) {
                     zellen.add(e.getZeitText());
                 }
-                zellen.add(e.getBeschreibung());
+                boolean schonGezeigt = !gezeigt.add(e.getBeschreibung().trim().toLowerCase(Format.DEUTSCH));
+                zellen.add(beschreibungEinmal && schonGezeigt ? "" : e.getBeschreibung());
                 if (mitPauseSpalte) {
                     zellen.add(e.getPauseMinuten() > 0 ? Format.zahl(e.getPauseStunden()) : "");
                 }
                 zellen.add(Format.zahl(stunden(e)));
+                t.zeile(blockNr(monat.getKey(), block), zellen.toArray(String[]::new));
+            }
+            if (mehrereMonate) {
+                t.zwischensumme(summenZellen("Summe " + name, leer, summe(monat.getValue())));
+            }
+        }
+        t.summe(summenZellen("Gesamt", leer, summe(eintraege)));
+        return t;
+    }
+
+    /** Blocknummern müssen über Monate hinweg verschieden sein (Block 1 im Oktober ist nicht Block 1 im November). */
+    private static int blockNr(YearMonth monat, int block) {
+        return (monat.getYear() * 12 + monat.getMonthValue()) * 1000 + block;
+    }
+
+    /**
+     * Tabelle für Kunden: pro Tag (und Projekt) eine Zeile mit der Arbeit und den Stunden aller zusammen.
+     * Keine Mitarbeiter, keine Uhrzeit, keine Pause. Verschiedene Beschreibungen vom selben Tag
+     * stehen hintereinander, gleiche nur einmal.
+     */
+    private Tabelle kundenTabelle() {
+        boolean mitProjekt = projekt == null && eintraege.stream().map(Eintrag::getProjekt).distinct().count() > 1;
+        Tabelle t = new Tabelle("Arbeiten").spalte("Datum");
+        if (mitProjekt) {
+            t.spalte("Projekt");
+        }
+        t.spalte("Beschreibung", false, 36).zahlenSpalte("Stunden");
+        int leer = t.getSpalten().size() - 2;
+
+        Map<YearMonth, List<Eintrag>> proMonat = new TreeMap<>();
+        for (Eintrag e : eintraege) {
+            proMonat.computeIfAbsent(YearMonth.from(e.getDatum()), k -> new ArrayList<>()).add(e);
+        }
+        boolean mehrereMonate = proMonat.size() > 1;
+
+        for (Map.Entry<YearMonth, List<Eintrag>> monat : proMonat.entrySet()) {
+            String name = monat.getKey().format(Format.MONAT);
+            if (mehrereMonate) {
+                t.gruppe(name);
+            }
+            Map<String, List<Eintrag>> proTag = new LinkedHashMap<>();
+            for (Eintrag e : monat.getValue()) {
+                proTag.computeIfAbsent(e.getDatum() + "|" + (mitProjekt ? e.getProjekt().getId() : 0),
+                        k -> new ArrayList<>()).add(e);
+            }
+            for (List<Eintrag> tag : proTag.values()) {
+                Set<String> texte = new LinkedHashSet<>();
+                Set<String> klein = new HashSet<>();
+                for (Eintrag e : tag) {
+                    if (klein.add(e.getBeschreibung().trim().toLowerCase(Format.DEUTSCH))) {
+                        texte.add(e.getBeschreibung().trim());
+                    }
+                }
+                List<String> zellen = new ArrayList<>();
+                zellen.add(tag.get(0).getDatum().format(Format.TAG));
+                if (mitProjekt) {
+                    zellen.add(tag.get(0).getProjekt().getName());
+                }
+                zellen.add(String.join("; ", texte));
+                zellen.add(Format.zahl(summe(tag)));
                 t.zeile(zellen.toArray(String[]::new));
             }
             if (mehrereMonate) {
@@ -278,6 +371,9 @@ public class Bericht {
             if (zeitraum.dateiTeil() == null) {
                 teile.add("gesamt");
             }
+        }
+        if (fuerKunden) {
+            teile.add("kunde");
         }
         if (!mitPause && hatPausen()) {
             teile.add("ohne_pause"); // damit der Bericht mit Pause nicht überschrieben wird

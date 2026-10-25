@@ -17,7 +17,12 @@ public class Tabelle {
     public record Spalte(String name, boolean rechts, int maxBreite) {
     }
 
-    public record Zeile(Art art, List<String> zellen) {
+    /** block: Zeilen mit derselben Zahl (größer 0) hintereinander gehören zusammen, z. B. ein Tag (0 = keiner). */
+    public record Zeile(Art art, List<String> zellen, int block) {
+
+        public Zeile(Art art, List<String> zellen) {
+            this(art, zellen, 0);
+        }
     }
 
     private final String titel;
@@ -44,6 +49,11 @@ public class Tabelle {
 
     public void zeile(String... zellen) {
         zeilen.add(new Zeile(Art.NORMAL, List.of(zellen)));
+    }
+
+    /** Datenzeile, die mit den Nachbarzeilen gleicher Blocknummer zusammengehört (wird gemeinsam umrandet). */
+    public void zeile(int block, String... zellen) {
+        zeilen.add(new Zeile(Art.NORMAL, List.of(zellen), block));
     }
 
     public void gruppe(String text) {

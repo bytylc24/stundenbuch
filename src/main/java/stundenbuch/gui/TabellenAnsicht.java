@@ -65,6 +65,16 @@ final class TabellenAnsicht {
             protected void updateItem(Tabelle.Zeile z, boolean leer) {
                 super.updateItem(z, leer);
                 getStyleClass().removeAll("zeile-gruppe", "zeile-summe");
+                setStyle(null);
+                if (!leer && z != null && z.block() > 0) {
+                    // Ein Tag (gleicher Block) wird gemeinsam umrandet: oben bei der ersten, unten bei der letzten Zeile
+                    var zeilen = getTableView().getItems();
+                    int i = getIndex();
+                    boolean erste = i == 0 || zeilen.get(i - 1).block() != z.block();
+                    boolean letzte = i == zeilen.size() - 1 || zeilen.get(i + 1).block() != z.block();
+                    setStyle("-fx-border-color: #1f4e79; -fx-border-width: " + (erste ? 1.5 : 0) + " 1.5 "
+                            + (letzte ? 1.5 : 0) + " 1.5;");
+                }
                 if (!leer && z != null) {
                     switch (z.art()) {
                         case GRUPPE -> getStyleClass().add("zeile-gruppe");

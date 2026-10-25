@@ -15,6 +15,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
@@ -54,6 +55,8 @@ final class BerichtSeite implements Seite {
     private final ComboBox<Opt<Mitarbeiter>> mitarbeiter = new ComboBox<>();
     private final RadioButton mitPause = new RadioButton("Mit Pause (Pause abgezogen, eigene Spalte)");
     private final RadioButton ohnePause = new RadioButton("Ohne Pause (Stunden von Beginn bis Ende)");
+    private final CheckBox fuerKunden = new CheckBox("Für Kunden (pro Tag nur Arbeit und Stunden, ohne Mitarbeiter, Uhrzeit, Pause)");
+    private final CheckBox einmalBeschreiben = new CheckBox("Gleiche Beschreibung am selben Tag nur einmal zeigen");
     private final Label pauseHinweis = new Label("Noch keine Pausen erfasst – die Wahl wirkt erst dann.");
 
     private final VBox vorschau = new VBox(14);
@@ -126,7 +129,10 @@ final class BerichtSeite implements Seite {
         zeile2.setAlignment(Pos.CENTER_LEFT);
         HBox zeile3 = new HBox(18, beschriftung("Pause"), mitPause, ohnePause, pauseHinweis);
         zeile3.setAlignment(Pos.CENTER_LEFT);
-        VBox filter = new VBox(10, zeile1, zeile2, zeile3);
+        einmalBeschreiben.setSelected(true);
+        HBox zeile4 = new HBox(18, beschriftung("Ausgabe"), einmalBeschreiben, fuerKunden);
+        zeile4.setAlignment(Pos.CENTER_LEFT);
+        VBox filter = new VBox(10, zeile1, zeile2, zeile3, zeile4);
         filter.getStyleClass().add("karte");
         filter.setPadding(new Insets(14));
 
@@ -146,6 +152,11 @@ final class BerichtSeite implements Seite {
         projekt.valueProperty().addListener((o, a, b) -> neuBauen.run());
         mitarbeiter.valueProperty().addListener((o, a, b) -> neuBauen.run());
         mitPause.selectedProperty().addListener((o, a, b) -> neuBauen.run());
+        einmalBeschreiben.selectedProperty().addListener((o, a, b) -> neuBauen.run());
+        fuerKunden.selectedProperty().addListener((o, a, b) -> {
+            einmalBeschreiben.setDisable(b); // bei Kunden steht die Arbeit pro Tag sowieso nur einmal
+            neuBauen.run();
+        });
 
         word.getStyleClass().add("primaer");
         word.setOnAction(e -> speichern(true, false));
@@ -251,7 +262,8 @@ final class BerichtSeite implements Seite {
         }
         Projekt p = projekt.getValue() == null ? null : projekt.getValue().wert();
         Mitarbeiter m = mitarbeiter.getValue() == null ? null : mitarbeiter.getValue().wert();
-        return new Bericht(daten.z(), zeitraum, p, m, mitPause.isSelected() || !daten.hatPausen());
+        return new Bericht(daten.z(), zeitraum, p, m, mitPause.isSelected() || !daten.hatPausen(),
+                fuerKunden.isSelected(), einmalBeschreiben.isSelected());
     }
 
     private void vorschauBauen() {

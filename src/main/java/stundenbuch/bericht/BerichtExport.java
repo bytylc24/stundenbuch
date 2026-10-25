@@ -26,6 +26,8 @@ public final class BerichtExport {
     private static final String SUMMENBLAU = "D9E2F3";
     private static final String ZEBRA = "F3F6FA";
     private static final String GRAU = "595959";
+    /** Umrandung eines Tages; %s wird durch top, left, bottom oder right ersetzt. */
+    private static final String RAHMEN = "<w:%s w:val=\"single\" w:sz=\"8\" w:color=\"" + DUNKELBLAU + "\"/>";
 
     // A4 hoch mit 2 cm Rand; Word misst in Twips (1/1440 Zoll), 2 cm = 1134
     private static final int RAND = 1134;
@@ -187,9 +189,22 @@ public final class BerichtExport {
             }
             switch (z.art()) {
                 case NORMAL -> {
-                    String fuellung = nr++ % 2 == 1 ? ZEBRA : null;
+                    int block = z.block();
+                    boolean vorneGleich = block > 0 && zeile > 0 && zeilen.get(zeile - 1).block() == block;
+                    boolean hintenGleich = block > 0 && zeile < zeilen.size() - 1 && zeilen.get(zeile + 1).block() == block;
+                    // Zebra pro Tag statt pro Zeile, damit der Block als Ganzes erkennbar ist
+                    int nummer = vorneGleich ? nr - 1 : nr++;
+                    String fuellung = nummer % 2 == 1 ? ZEBRA : null;
+                    // Umrandung des Tages: oben bei der ersten, unten bei der letzten, links und rechts bei allen
+                    String oben = block > 0 && !vorneGleich ? RAHMEN.formatted("top") : null;
+                    String unten = block > 0 && !hintenGleich ? RAHMEN.formatted("bottom") : null;
                     for (int i = 0; i < n; i++) {
-                        sb.append(zelle(w[i], 1, fuellung, null, spalten.get(i).rechts(), zusammen,
+                        String rahmen = block == 0 ? null
+                                : (oben == null ? "" : oben)
+                                + (i == 0 ? RAHMEN.formatted("left") : "")
+                                + (unten == null ? "" : unten)
+                                + (i == n - 1 ? RAHMEN.formatted("right") : "");
+                        sb.append(zelle(w[i], 1, fuellung, rahmen, spalten.get(i).rechts(), zusammen || hintenGleich,
                                 lauf(z.zellen().get(i), "")));
                     }
                 }
@@ -303,7 +318,7 @@ public final class BerichtExport {
         if (spanne > 1) {
             sb.append("<w:gridSpan w:val=\"").append(spanne).append("\"/>");
         }
-        if (obenLinie != null) {
+        if (obenLinie != null && !obenLinie.isEmpty()) {
             sb.append("<w:tcBorders>").append(obenLinie).append("</w:tcBorders>");
         }
         if (fuellung != null) {
