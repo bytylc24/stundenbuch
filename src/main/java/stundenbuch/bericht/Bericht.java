@@ -151,6 +151,11 @@ public class Bericht {
         if (projekt == null) {
             t.spalte("Projekt");
         }
+        // Die Zeit-Spalte gibt es nur, wenn mindestens ein Eintrag eine Uhrzeit hat
+        boolean mitZeit = eintraege.stream().anyMatch(e -> !e.getZeitText().isEmpty());
+        if (mitZeit) {
+            t.spalte("Zeit");
+        }
         t.spalte("Beschreibung", false, 36).zahlenSpalte("Stunden");
         int leer = t.getSpalten().size() - 2; // Zellen zwischen Beschriftung und Stunden bei Summen
 
@@ -173,6 +178,9 @@ public class Bericht {
                 }
                 if (projekt == null) {
                     zellen.add(e.getProjekt().getName());
+                }
+                if (mitZeit) {
+                    zellen.add(e.getZeitText());
                 }
                 zellen.add(e.getBeschreibung());
                 zellen.add(Format.zahl(e.getStunden()));

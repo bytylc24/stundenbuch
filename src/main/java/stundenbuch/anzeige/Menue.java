@@ -6,6 +6,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -13,6 +14,8 @@ import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.function.Function;
 
 import stundenbuch.bericht.Bericht;
@@ -56,6 +59,11 @@ public class Menue {
     public void start() {
         zeiterfassung = speicher.laden();
         hinweis("Deine Daten liegen in: " + speicher.getOrdner());
+        String warnung = speicher.getLadeWarnung();
+        if (warnung != null) {
+            fehler(warnung);
+            weiterMitEnter(); // sonst wäre die Warnung sofort vom leeren Fenster weg
+        }
 
         try {
             boolean weiter = true;
@@ -148,10 +156,19 @@ public class Menue {
             abbruch("Abgebrochen.");
             return;
         }
-        double stunden = leseStunden("Stunden: ");
+        // Entweder von-bis (daraus werden die Stunden berechnet) oder die Stunden direkt
+        Zeit zeit = leseZeit("Uhrzeit von-bis (z. B. 9:00-18:30, leer = Stunden direkt eingeben): ", false);
+        double stunden;
+        if (zeit != null) {
+            stunden = Eintrag.stundenZwischen(zeit.von(), zeit.bis());
+            System.out.println(Konsole.grau("= " + Format.stunden(stunden)));
+        } else {
+            stunden = leseStunden("Stunden: ");
+        }
         String beschreibung = leseText("Was wurde gemacht? ");
 
-        Eintrag e = zeiterfassung.addEintrag(datum, m, p, stunden, beschreibung);
+        Eintrag e = zeiterfassung.addEintrag(datum, m, p, stunden, beschreibung,
+                zeit == null ? null : zeit.von(), zeit == null ? null : zeit.bis());
         speichern();
         ok("Gespeichert: Eintrag #" + e.getId() + " (" + e.getDatum().format(Format.DATUM)
                 + ", " + m.getName() + ", " + p.getName() + ", " + Format.stunden(stunden) + ")");
@@ -185,8 +202,13 @@ public class Menue {
                     + Konsole.links(e.getMitarbeiter().getName(), breiteM) + "  "
                     + Konsole.links(e.getProjekt().getName(), breiteP) + "  "
                     + Konsole.rechts(Format.stunden(e.getStunden()), 8));
-            for (String zeile : Konsole.umbrechen(e.getBeschreibung(), Konsole.BREITE - 8)) {
-                System.out.println("        " + zeile);
+            // Die Uhrzeit steht vor der Beschreibung, die weiteren Zeilen sind passend eingerückt
+            String zeit = e.getZeitText();
+            String einzug = " ".repeat(zeit.isEmpty() ? 0 : zeit.length() + 2);
+            boolean erste = true;
+            for (String zeile : Konsole.umbrechen(e.getBeschreibung(), Konsole.BREITE - 8 - einzug.length())) {
+                System.out.println("        " + (erste && !zeit.isEmpty() ? Konsole.grau(zeit) + "  " : einzug) + zeile);
+                erste = false;
             }
         }
     }
@@ -239,11 +261,28 @@ public class Menue {
             p = e.getProjekt();
         }
 
-        double stunden = leseStunden("Stunden (alt: " + String.format(Format.DEUTSCH, "%.1f", e.getStunden()) + "): ",
-                e.getStunden());
+        String alteZeit = e.getZeitText();
+        Zeit zeit = leseZeit("Uhrzeit von-bis (alt: " + (alteZeit.isEmpty() ? "keine" : alteZeit)
+                + ", leer = behalten, - = entfernen): ", true);
+        LocalTime von = e.getVon();
+        LocalTime bis = e.getBis();
+        if (zeit != null) {
+            von = zeit.von(); // bei "-" beide null
+            bis = zeit.bis();
+        }
+        double stunden;
+        if (von != null) {
+            // Mit Uhrzeit sind die Stunden immer daraus berechnet
+            stunden = Eintrag.stundenZwischen(von, bis);
+            System.out.println(Konsole.grau("Stunden: " + Format.stunden(stunden) + " (aus der Uhrzeit)"));
+        } else {
+            stunden = leseStunden("Stunden (alt: " + Format.zahl(e.getStunden()) + "): ",
+                    e.getStunden());
+        }
         String beschreibung = leseText("Was wurde gemacht? (alt: " + e.getBeschreibung() + "): ",
                 e.getBeschreibung());
 
+        e.setZeit(von, bis);
         e.setDatum(datum);
         e.setMitarbeiter(m);
         e.setProjekt(p);
@@ -657,7 +696,10 @@ public class Menue {
                 DIE MENÜPUNKTE
                   1) Eintrag erfassen
                      Datum (TT.MM.JJJJ, leer = heute), Mitarbeiter, Projekt,
-                     Stunden (z. B. 4,5, erlaubt: mehr als 0 bis 24) und Beschreibung.
+                     dann entweder die Uhrzeit von-bis (z. B. 9:00-18:30, die Stunden
+                     werden daraus berechnet) oder direkt die Stunden (z. B. 4,5,
+                     erlaubt: mehr als 0 bis 24), und die Beschreibung.
+                     Die Uhrzeit erscheint auch in Terminal, Word und CSV.
                   2) Arbeitstage anzeigen
                      Alle Einträge nach Tag, neuester zuerst, mit Tagessumme.
                      Die Zahl nach # brauchst du zum Bearbeiten und Löschen.
@@ -688,6 +730,11 @@ public class Menue {
                   - In Listen bedeutet 0 abbrechen bzw. behalten
                     (beim Bericht: alle Projekte bzw. alle Mitarbeiter).
                   - Jede Änderung wird sofort gespeichert.
+                  - Beim ersten Start jedes Tages wird eine Sicherung der Daten
+                    angelegt (Ordner Sicherung, die letzten 14 Tage).
+                  - Der Bericht (Word/CSV) wird immer neu aus allen Einträgen gebaut.
+                    Das Programm liest nie eine Word-Datei ein: Was du in Word
+                    von Hand änderst, gilt nur dort und geht beim Überschreiben verloren.
 
                 FARBEN
                   grün = erledigt (gespeichert, angelegt, gelöscht)
@@ -844,6 +891,50 @@ public class Menue {
             } catch (NumberFormatException ex) {
                 fehler("Bitte eine Zahl eingeben, z. B. 4,5");
             }
+        }
+    }
+
+    /** Uhrzeit von-bis. Bei "-" (nur beim Bearbeiten) sind beide null: Uhrzeit entfernen. */
+    private record Zeit(LocalTime von, LocalTime bis) {
+    }
+
+    // 9:00-18:30, 9-18, 9.00 - 18.30 oder 9:00 bis 18:30
+    private static final Pattern ZEIT_MUSTER =
+            Pattern.compile("(\\d{1,2})(?:[:.](\\d{2}))?\\s*(?:-|–|bis)\\s*(\\d{1,2})(?:[:.](\\d{2}))?");
+
+    /**
+     * Fragt von-bis ab. Leere Eingabe ergibt null (Aufrufer entscheidet: Stunden direkt bzw. behalten).
+     * Das Ende muss nach dem Beginn liegen: Über Mitternacht gibt es zwei Einträge, einen pro Tag.
+     */
+    private Zeit leseZeit(String text, boolean minusErlaubt) {
+        while (true) {
+            String eingabe = leseZeile(text);
+            if (eingabe.isEmpty()) {
+                return null;
+            }
+            if (minusErlaubt && eingabe.equals("-")) {
+                return new Zeit(null, null);
+            }
+            Matcher m = ZEIT_MUSTER.matcher(eingabe);
+            if (!m.matches()) {
+                fehler("Bitte so eingeben: 9:00-18:30");
+                continue;
+            }
+            int vonStunde = Integer.parseInt(m.group(1));
+            int vonMinute = m.group(2) == null ? 0 : Integer.parseInt(m.group(2));
+            int bisStunde = Integer.parseInt(m.group(3));
+            int bisMinute = m.group(4) == null ? 0 : Integer.parseInt(m.group(4));
+            if (vonStunde > 23 || bisStunde > 23 || vonMinute > 59 || bisMinute > 59) {
+                fehler("Ungültige Uhrzeit. Stunden gehen von 0 bis 23, Minuten von 0 bis 59.");
+                continue;
+            }
+            LocalTime von = LocalTime.of(vonStunde, vonMinute);
+            LocalTime bis = LocalTime.of(bisStunde, bisMinute);
+            if (!bis.isAfter(von)) {
+                fehler("Das Ende muss nach dem Beginn liegen. Über Mitternacht bitte zwei Einträge machen.");
+                continue;
+            }
+            return new Zeit(von, bis);
         }
     }
 

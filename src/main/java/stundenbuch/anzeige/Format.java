@@ -19,13 +19,18 @@ public final class Format {
     private Format() {
     }
 
-    /** Stunden mit Komma und einer Nachkommastelle, z. B. "4,5 h". */
+    /** Stunden mit Komma, z. B. "4,5 h". */
     public static String stunden(double stunden) {
-        return String.format(DEUTSCH, "%.1f h", stunden);
+        return zahl(stunden) + " h";
     }
 
-    /** Nur die Zahl, z. B. "4,5": für Tabellen, deren Überschrift schon "Stunden" sagt. */
+    /**
+     * Nur die Zahl: für Tabellen, deren Überschrift schon "Stunden" sagt.
+     * Eine Nachkommastelle ("4,5"), nur bei Viertelstunden und Minuten zwei ("4,25"),
+     * damit 8:15-12:30 nicht zu 4,3 gerundet wird.
+     */
     public static String zahl(double stunden) {
-        return String.format(DEUTSCH, "%.1f", stunden);
+        String text = String.format(DEUTSCH, "%.2f", stunden);
+        return text.endsWith("0") ? text.substring(0, text.length() - 1) : text;
     }
 }

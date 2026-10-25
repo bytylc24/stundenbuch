@@ -1,6 +1,7 @@
 package stundenbuch.modell;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -59,11 +60,12 @@ public class Zeiterfassung {
     }
 
     /** Legt einen Eintrag an. Gibt es keine Einträge mehr, beginnt die #-Nummer wieder bei 1. */
-    public Eintrag addEintrag(LocalDate datum, Mitarbeiter m, Projekt p, double stunden, String text) {
+    public Eintrag addEintrag(LocalDate datum, Mitarbeiter m, Projekt p, double stunden, String text,
+                              LocalTime von, LocalTime bis) {
         if (eintraege.isEmpty()) {
             naechsteEintragId = 1;
         }
-        Eintrag e = new Eintrag(naechsteEintragId++, datum, m, p, stunden, text);
+        Eintrag e = new Eintrag(naechsteEintragId++, datum, m, p, stunden, text, von, bis);
         eintraege.add(e);
         return e;
     }
@@ -80,8 +82,9 @@ public class Zeiterfassung {
         naechsteProjektId = Math.max(naechsteProjektId, id + 1);
     }
 
-    public void ladeEintrag(int id, LocalDate datum, Mitarbeiter m, Projekt p, double stunden, String text) {
-        eintraege.add(new Eintrag(id, datum, m, p, stunden, text));
+    public void ladeEintrag(int id, LocalDate datum, Mitarbeiter m, Projekt p, double stunden, String text,
+                            LocalTime von, LocalTime bis) {
+        eintraege.add(new Eintrag(id, datum, m, p, stunden, text, von, bis));
         naechsteEintragId = Math.max(naechsteEintragId, id + 1);
     }
 

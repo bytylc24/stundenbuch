@@ -64,6 +64,9 @@ Gut zu wissen:
 - Doppelte Namen sind nicht erlaubt (Groß-/Kleinschreibung egal).
 - Wer noch Einträge hat, kann nicht gelöscht werden. Lösche zuerst die Einträge.
 - Umbenennen wirkt auch auf alle alten Einträge.
+- Beim Erfassen kannst du die Uhrzeit `von-bis` eingeben (z. B. `9:00-18:30`); die Stunden werden daraus berechnet. Sie erscheint auch im Bericht.
+- Der Bericht (Word/CSV) wird immer komplett neu aus allen Einträgen gebaut. Was du in einer Word-Datei von Hand änderst, geht beim Überschreiben verloren.
+- Ist `eintraege.csv` beim Start in Excel offen, warnt das Programm und speichert nichts, damit keine Daten verloren gehen. Datei schließen, Programm neu starten.
 - Jeder Mitarbeiter bekommt eine feste Kennung: `AB_01` = Arbeiter 1, `AB_02` = Arbeiter 2 usw.
 - Gelöschte Nummern werden nicht neu vergeben. Ausnahme: Sind **alle** Mitarbeiter gelöscht, beginnt
   die Kennung wieder bei `AB_01`. Genauso bei Projekten (wieder Nr. 1) und Einträgen (wieder `#1`).
@@ -270,10 +273,10 @@ Trennzeichen `;`, UTF-8. Ein `;` im Text wird als `\s` gespeichert, ein `\` als 
 |---|---|---|
 | `mitarbeiter.csv` | Kennung;Name | `AB_01;Jonas` |
 | `projekte.csv` | Nr;Ort;Kunde | `1;Graz;Mustermann` |
-| `eintraege.csv` | Nr;Datum;Mitarbeiter;ProjektNr;Stunden;Beschreibung | `1;2026-10-05;AB_01;1;10.0;Konzept erstellt` |
+| `eintraege.csv` | Nr;Datum;Mitarbeiter;ProjektNr;Stunden;Beschreibung;Von;Bis | `1;2026-10-05;AB_01;1;9.5;Konzept erstellt;09:00;18:30` |
 
 `eintraege.csv` beginnt mit dieser Kopfzeile. Sie fängt bewusst mit `Nr` an und nicht mit `ID`,
-weil Excel Dateien, die mit `ID` beginnen, für SYLK-Dateien hält.
+weil Excel Dateien, die mit `ID` beginnen, für SYLK-Dateien hält. Von und Bis sind leer, wenn nur Stunden eingegeben wurden; ältere Dateien ohne diese beiden Spalten werden weiter geladen.
 
 ## Weitere Unterlagen
 
