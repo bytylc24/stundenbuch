@@ -529,7 +529,7 @@ public class Menue {
         System.out.println("Ausgabe:");
         System.out.println("  " + Konsole.taste("1)") + " Normal (alle Einträge, gleiche Beschreibung am Tag nur einmal)");
         System.out.println("  " + Konsole.taste("2)") + " Normal (alle Einträge, jede Beschreibung)");
-        System.out.println("  " + Konsole.taste("3)") + " Für Kunden (pro Tag nur Arbeit und Stunden, ohne Mitarbeiter, Uhrzeit, Pause)");
+        System.out.println("  " + Konsole.taste("3)") + " Für Kunden (ohne Uhrzeit, Pause und Stunden-Auswertung pro Mitarbeiter)");
         int ausgabe = leseZahl("Nummer: ", 1, 3);
         return new Bericht(zeiterfassung, zeitraum, p, m, mitPause, ausgabe == 3, ausgabe == 1);
     }
