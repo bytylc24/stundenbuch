@@ -152,6 +152,11 @@ public class Menue {
             abbruch("Abgebrochen.");
             return;
         }
+        // Haben mehrere dasselbe gemacht, gilt alles für alle: ein Eintrag pro Person
+        List<Mitarbeiter> leute = new ArrayList<>(List.of(m));
+        if (zeiterfassung.getMitarbeiter().size() > 1) {
+            leute.addAll(leseWeitereMitarbeiter(m));
+        }
         Projekt p = waehle("Projekt", zeiterfassung.getProjekte(), Projekt::getName);
         if (p == null) {
             abbruch("Abgebrochen.");
@@ -169,13 +174,62 @@ public class Menue {
         } else {
             stunden = leseStunden("Stunden: ");
         }
-        String beschreibung = leseText("Was wurde gemacht? ");
+        // Gibt es für diesen Tag und das Projekt schon eine Beschreibung, genügt Enter
+        String schonDa = zeiterfassung.getBeschreibungAmTag(datum, p);
+        String beschreibung = schonDa == null
+                ? leseText("Was wurde gemacht? ")
+                : leseText("Was wurde gemacht? (leer = wie vorhin: " + schonDa + ") ", schonDa);
 
-        Eintrag e = zeiterfassung.addEintrag(datum, m, p, stunden, beschreibung,
-                zeit == null ? null : zeit.von(), zeit == null ? null : zeit.bis(), pause);
+        Eintrag e = null;
+        for (Mitarbeiter person : leute) {
+            e = zeiterfassung.addEintrag(datum, person, p, stunden, beschreibung,
+                    zeit == null ? null : zeit.von(), zeit == null ? null : zeit.bis(), pause);
+        }
         speichern();
-        ok("Gespeichert: Eintrag #" + e.getId() + " (" + e.getDatum().format(Format.DATUM)
-                + ", " + m.getName() + ", " + p.getName() + ", " + Format.stunden(stunden) + ")");
+        if (leute.size() == 1) {
+            ok("Gespeichert: Eintrag #" + e.getId() + " (" + e.getDatum().format(Format.DATUM)
+                    + ", " + m.getName() + ", " + p.getName() + ", " + Format.stunden(stunden) + ")");
+        } else {
+            ok("Gespeichert: " + leute.size() + " Einträge (" + datum.format(Format.DATUM) + ", "
+                    + String.join(", ", leute.stream().map(Mitarbeiter::getName).toList()) + ", "
+                    + p.getName() + ", je " + Format.stunden(stunden) + ")");
+        }
+    }
+
+    /** Fragt, wer noch dasselbe gemacht hat: Nummern mit Komma, "alle" oder leer für niemand. */
+    private List<Mitarbeiter> leseWeitereMitarbeiter(Mitarbeiter schon) {
+        List<Mitarbeiter> rest = zeiterfassung.getMitarbeiter().stream().filter(x -> x != schon).toList();
+        System.out.println("Noch jemand mit denselben Zeiten und derselben Arbeit?");
+        for (int i = 0; i < rest.size(); i++) {
+            System.out.println("  " + Konsole.taste((i + 1) + ")") + " " + rest.get(i).getName());
+        }
+        while (true) {
+            String eingabe = leseZeile("Nummern mit Komma (z. B. 1,3), alle, leer = niemand: ").toLowerCase();
+            if (eingabe.isEmpty()) {
+                return List.of();
+            }
+            if (eingabe.equals("alle")) {
+                return rest;
+            }
+            List<Mitarbeiter> auswahl = new ArrayList<>();
+            boolean gueltig = true;
+            for (String teil : eingabe.split("[,; ]+")) {
+                try {
+                    int nr = Integer.parseInt(teil);
+                    if (nr < 1 || nr > rest.size()) {
+                        gueltig = false;
+                    } else if (!auswahl.contains(rest.get(nr - 1))) {
+                        auswahl.add(rest.get(nr - 1));
+                    }
+                } catch (NumberFormatException ex) {
+                    gueltig = false;
+                }
+            }
+            if (gueltig) {
+                return auswahl;
+            }
+            fehler("Bitte Nummern von 1 bis " + rest.size() + " mit Komma eingeben, z. B. 1,3.");
+        }
     }
 
     /** Zeigt alle Einträge gruppiert nach Tag, neuester Tag zuerst, mit Tagessumme. */
@@ -471,7 +525,13 @@ public class Menue {
             System.out.println("  " + Konsole.taste("2)") + " Ohne Pause (Stunden von Beginn bis Ende, keine Pause-Spalte)");
             mitPause = leseZahl("Nummer: ", 1, 2) == 1;
         }
-        return new Bericht(zeiterfassung, zeitraum, p, m, mitPause);
+
+        System.out.println("Ausgabe:");
+        System.out.println("  " + Konsole.taste("1)") + " Normal (alle Einträge, gleiche Beschreibung am Tag nur einmal)");
+        System.out.println("  " + Konsole.taste("2)") + " Normal (alle Einträge, jede Beschreibung)");
+        System.out.println("  " + Konsole.taste("3)") + " Für Kunden (pro Tag nur Arbeit und Stunden, ohne Mitarbeiter, Uhrzeit, Pause)");
+        int ausgabe = leseZahl("Nummer: ", 1, 3);
+        return new Bericht(zeiterfassung, zeitraum, p, m, mitPause, ausgabe == 3, ausgabe == 1);
     }
 
     /** Vorschau im Terminal, aufgebaut wie die Word-Datei. */
